@@ -73,6 +73,12 @@ Item {
   function close() { root.opened = false }
   function toggle() { root.opened ? root.close() : root.open() }
 
+  function openConfigEditor() {
+    root.close()
+    configEditorProcess.command = ["omarchy-launch-editor", root.configPath]
+    configEditorProcess.running = true
+  }
+
   function findTargetScreen() {
     var wanted = root.requestedScreenName
     if (wanted) {
@@ -217,6 +223,8 @@ Item {
     }
   }
 
+  Process { id: configEditorProcess }
+
   Timer {
     interval: 15 * 60 * 1000
     running: root.opened
@@ -268,19 +276,32 @@ Item {
         anchors.leftMargin: card.contentLeftInset
         spacing: Style.spacing.panelGap
 
-        PanelHero {
+        Item {
           width: parent.width
-          title: "Calendar"
-          meta: root.statusText
-          fontFamily: Style.fontFamily
+          implicitHeight: hero.implicitHeight
 
-          iconComponent: Component {
-            Text {
-              text: "󰃭"
-              color: Color.foreground
-              font.family: Style.fontFamily
-              font.pixelSize: Style.font.display
+          PanelHero {
+            id: hero
+            anchors.fill: parent
+            title: "Calendar"
+            meta: root.statusText
+            fontFamily: Style.fontFamily
+
+            iconComponent: Component {
+              Text {
+                text: "󰃭"
+                color: Color.foreground
+                font.family: Style.fontFamily
+                font.pixelSize: Style.font.display
+              }
             }
+          }
+
+          MouseArea {
+            anchors.fill: parent
+            visible: root.calendars.length === 0
+            cursorShape: Qt.PointingHandCursor
+            onClicked: root.openConfigEditor()
           }
         }
 
