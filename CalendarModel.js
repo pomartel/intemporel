@@ -170,7 +170,14 @@ function eventsForMonth(events, year, month) {
 }
 
 function formatTime(date, locale) {
-  return locale.toString(date, locale.timeFormat(1))
+  var pattern = locale.timeFormat(1)
+  if (!/[aApP]{1,2}/.test(pattern)) return locale.toString(date, "H:mm")
+  return locale.toString(date, pattern)
+    .replace(/^0(?=\d)/, "")
+    .replace(/\s+h\s*/i, ":")
+    .replace(/\s*([AaPp])\.?\s*[Mm]\.?$/, function(_, meridiem) {
+    return meridiem.toLowerCase() + "m"
+  })
 }
 
 function formatEvent(event, locale, timeLocale) {

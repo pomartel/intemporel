@@ -68,6 +68,24 @@ Each calendar entry supports:
 
 The file is watched for changes and is reloaded automatically.
 
+## Locale-aware formatting
+
+Intemporel uses the system locale by default for weekday order, month names,
+weekday names, and event times. When the shell opening command provides an
+explicit locale, that locale controls all of those formats for that panel
+session.
+
+For example, this opens the panel using Canadian French formatting:
+
+```bash
+omarchy-shell shell toggle intemporel '{"locale":"fr_CA"}'
+```
+
+The event time follows the selected locale's short-time convention. 12-hour
+locales display times such as `9:30am`; 24-hour locales display times such as
+`9:30`. The formatter also removes locale-specific separators such as the
+French `h` in `09 h 30`.
+
 ### Privacy and security
 
 Only use feeds that are intended to be shared with the people who can access
