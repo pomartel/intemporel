@@ -83,8 +83,7 @@ omarchy-shell shell toggle intemporel '{"locale":"fr_CA"}'
 
 The event time follows the selected locale's short-time convention. 12-hour
 locales display times such as `9:30am`; 24-hour locales display times such as
-`9:30`. The formatter also removes locale-specific separators such as the
-French `h` in `09 h 30`.
+`9:30`.
 
 ### Privacy and security
 
