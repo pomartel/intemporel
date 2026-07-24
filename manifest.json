@@ -1,0 +1,12 @@
+{
+  "schemaVersion": 1,
+  "id": "intemporel",
+  "name": "Intemporel",
+  "version": "1.0.0",
+  "author": "Pierre Olivier Martel",
+  "description": "An Omarchy 4 QuickShell Calendar Plugin",
+  "kinds": ["panel"],
+  "entryPoints": {
+    "panel": "Calendar.qml"
+  }
+}
