@@ -170,7 +170,7 @@ function eventsForMonth(events, year, month) {
 }
 
 function formatTime(date, locale) {
-  return locale.toString(date, "HH:mm")
+  return locale.toString(date, locale.timeFormat(1))
 }
 
 function formatEvent(event, locale) {
