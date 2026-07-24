@@ -299,7 +299,9 @@ Item {
 
           MouseArea {
             anchors.fill: parent
-            visible: root.calendars.length === 0
+            visible: root.statusText === "No calendars configured"
+                  || root.statusText === "Updating..."
+                  || root.statusText === "Updated"
             cursorShape: Qt.PointingHandCursor
             onClicked: root.openConfigEditor()
           }
