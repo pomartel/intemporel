@@ -32,7 +32,7 @@ Item {
   readonly property var selectedEvents: {
     var list = root.monthEvents[root.selectedKey] || []
     var formatted = []
-    for (var i = 0; i < list.length; i++) formatted.push(Model.formatEvent(list[i], root.locale))
+    for (var i = 0; i < list.length; i++) formatted.push(Model.formatEvent(list[i], root.locale, Qt.locale()))
     return formatted
   }
   readonly property string monthTitle: (root.capitalize(root.locale.toString(root.viewDate, "MMMM")) + " " + root.viewYear).toUpperCase()

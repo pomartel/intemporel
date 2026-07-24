@@ -173,7 +173,7 @@ function formatTime(date, locale) {
   return locale.toString(date, locale.timeFormat(1))
 }
 
-function formatEvent(event, locale) {
-  var time = event.allDay ? "" : formatTime(event.start, locale)
+function formatEvent(event, locale, timeLocale) {
+  var time = event.allDay ? "" : formatTime(event.start, timeLocale || locale)
   return { time: time, title: event.summary, location: event.location, calendar: event.calendar, color: event.color }
 }
