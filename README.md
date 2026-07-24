@@ -1,4 +1,4 @@
-# Intemporel — An Omarchy 4 QuickShell Calendar Plugin
+# Intemporel — An Omarchy 4 Calendar Plugin
 
 Intemporel is a lightweight, read-only calendar panel for [Omarchy](https://omarchy.org/).
 It displays events from public iCalendar (ICS) feeds in the same visual style as
@@ -9,19 +9,8 @@ the Omarchy shell's other panels.
 - Monthly calendar view with today and the selected day highlighted
 - Read-only event display from one or more public ICS URLs
 - Calendar-specific names and colors
-- Recurring daily, weekly, and monthly events
-- 24-hour event times
 - Keyboard navigation
-- Automatic refresh while the panel is open
-- Uses the shared Omarchy shell styling and font
 - No calendar accounts, credentials, or write access required
-
-## Requirements
-
-- Omarchy 4
-- A running Omarchy shell
-- `curl`
-- Public ICS feeds that can be fetched without authentication
 
 ## Installation
 
@@ -94,26 +83,10 @@ delete calendar data.
 | Key | Action |
 | --- | --- |
 | `↑` `↓` `←` `→` | Move the selected day |
-| `h` `j` `k` `l` | Move the selected day |
-| `Ctrl` + arrow keys | Change month while preserving the day when possible |
-| `Ctrl` + `h` `j` `k` `l` | Change month |
-| `Enter` | Go to today |
-| `Home` | Go to today |
+| `Ctrl` + arrow keys | Change month |
+| `Enter` or `Home` | Go to today |
 | `r` | Refresh calendar feeds |
 | `Esc` | Close the panel |
-
-## Event support
-
-Intemporel reads standard ICS fields including:
-
-- `SUMMARY`
-- `DTSTART`
-- `DTEND`
-- `LOCATION` (parsed for compatibility but not displayed)
-- `RRULE` for daily, weekly, and monthly recurrence
-
-All-day events display without a time. Timed events display only their start
-time in 24-hour format.
 
 ## Troubleshooting
 
@@ -125,13 +98,6 @@ Check that:
 2. Each feed URL is reachable without authentication.
 3. `curl -fsSL "https://example.com/calendar.ics"` can fetch the feed.
 4. The feed contains valid `VEVENT` entries.
-
-After changing plugin code, rescan the plugins and restart the shell:
-
-```bash
-omarchy plugin rescan
-omarchy restart shell
-```
 
 ### A feed stops updating
 
@@ -146,9 +112,6 @@ Update installed plugins with:
 ```bash
 omarchy plugin update intemporel
 ```
-
-Review changes before accepting an update, especially if you keep personal
-feed URLs in the plugin directory.
 
 ## Development
 
