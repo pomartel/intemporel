@@ -165,7 +165,7 @@ Item {
     root.fetchIndex = 0
     root.events = []
     root.monthEvents = ({})
-    root.statusText = root.calendars.length ? "Refreshing calendars…" : "No calendars configured"
+    root.statusText = root.calendars.length ? "Refreshing..." : "No calendars configured"
     root.fetchInProgress = root.calendars.length > 0
     if (root.fetchInProgress) root.fetchNext()
   }
@@ -174,7 +174,7 @@ Item {
     if (root.fetchIndex >= root.calendars.length) {
       root.fetchInProgress = false
       root.rebuildMonth()
-      if (!root.statusText || root.statusText === "Refreshing calendars…") root.statusText = "Updated"
+      if (!root.statusText || root.statusText === "Refreshing...") root.statusText = "Updated"
       return
     }
     var calendar = root.calendars[root.fetchIndex]
