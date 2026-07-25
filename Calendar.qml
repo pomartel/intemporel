@@ -1,11 +1,11 @@
 import QtQuick
 import QtQuick.Controls
 import Quickshell
-import Quickshell.Io
 import Quickshell.Hyprland
+import Quickshell.Io
 import Quickshell.Wayland
-import qs.Commons
 import qs.Ui
+import qs.Commons
 import "CalendarModel.js" as Model
 
 Item {
@@ -24,6 +24,11 @@ Item {
   property bool fetchInProgress: false
   property string requestedScreenName: ""
   property string explicitLocaleName: ""
+  property string fontFamily: Style.font.menuFamily
+  property color background: Color.popups.background
+  property color foreground: Color.popups.text
+  property color border: Color.popups.border
+  property var borderSpec: Border.surfaceSpec("popups", "border", root.border, Math.max(1, Style.space(2)))
   readonly property var locale: root.explicitLocaleName ? Qt.locale(root.explicitLocaleName) : Qt.locale()
   readonly property string configPath: Quickshell.env("HOME") + "/.config/omarchy/plugins/intemporel/calendar.json"
   readonly property int viewYear: viewDate.getFullYear()
@@ -89,11 +94,6 @@ Item {
       for (var j = 0; j < Quickshell.screens.length; j++)
         if (Quickshell.screens[j].name === Hyprland.focusedMonitor.name) return Quickshell.screens[j]
     return Quickshell.screens.length ? Quickshell.screens[0] : null
-  }
-
-  function setViewDate(year, month) {
-    root.viewDate = new Date(year, month, 1)
-    root.rebuildMonth()
   }
 
   function shiftMonth(amount) {
@@ -239,7 +239,7 @@ Item {
     anchors { top: true; bottom: true; left: true; right: true }
     color: "transparent"
     exclusionMode: ExclusionMode.Ignore
-    WlrLayershell.namespace: "local-calendar"
+    WlrLayershell.namespace: "omarchy-intemporel"
     WlrLayershell.layer: WlrLayer.Overlay
     WlrLayershell.keyboardFocus: root.opened ? WlrKeyboardFocus.Exclusive : WlrKeyboardFocus.None
 
@@ -258,8 +258,8 @@ Item {
       anchors.horizontalCenter: parent.horizontalCenter
       anchors.top: parent.top
       anchors.topMargin: Style.bar.sizeHorizontal + Style.gapsOut
-      color: Color.popups.background
-      borderSpec: Border.surfaceSpec("popups", "border", Color.popups.border, Math.max(1, Style.space(2)))
+      color: root.background
+      borderSpec: root.borderSpec
       radius: Style.cornerRadius
       padding: Style.spacing.popupPadding
 
@@ -285,13 +285,13 @@ Item {
             anchors.fill: parent
             title: "Calendar"
             meta: root.statusText
-            fontFamily: Style.fontFamily
+            fontFamily: root.fontFamily
 
             iconComponent: Component {
               Text {
                 text: "󰃭"
-                color: Color.foreground
-                font.family: Style.fontFamily
+                color: root.foreground
+                font.family: root.fontFamily
                 font.pixelSize: Style.font.display
               }
             }
@@ -307,12 +307,12 @@ Item {
           }
         }
 
-        PanelSeparator { foreground: Color.foreground }
+        PanelSeparator { foreground: root.foreground }
 
         Text {
           text: root.monthTitle
-          color: Color.foreground
-          font.family: Style.fontFamily
+          color: root.foreground
+          font.family: root.fontFamily
           font.pixelSize: Style.font.body
           font.bold: true
         }
@@ -334,7 +334,7 @@ Item {
                 height: Style.space(22)
                 text: modelData.substring(0, 2)
                 color: Color.accent
-                font.family: Style.fontFamily
+                font.family: root.fontFamily
                 font.pixelSize: Style.font.body
                 font.bold: true
                 horizontalAlignment: Text.AlignHCenter
@@ -361,8 +361,8 @@ Item {
                 Text {
                   anchors.centerIn: parent
                   text: modelData.day
-                  color: modelData.selected ? Color.background : Color.foreground
-                  font.family: Style.fontFamily
+                  color: modelData.selected ? root.background : root.foreground
+                  font.family: root.fontFamily
                   font.pixelSize: Style.font.body
                   font.bold: modelData.today || modelData.selected
                 }
@@ -372,7 +372,7 @@ Item {
                   width: Style.space(5)
                   height: width
                   radius: width / 2
-                  color: modelData.selected ? Color.background : Color.accent
+                  color: modelData.selected ? root.background : Color.accent
                   anchors.horizontalCenter: parent.horizontalCenter
                   anchors.bottom: parent.bottom
                   anchors.bottomMargin: Style.space(4)
@@ -392,23 +392,23 @@ Item {
           }
         }
 
-        Rectangle { width: parent.width; height: Style.spacing.hairline; color: Color.foreground; opacity: 0.14 }
+        Rectangle { width: parent.width; height: Style.spacing.hairline; color: root.foreground; opacity: 0.14 }
 
         Column {
           width: parent.width
           spacing: Style.space(4)
           Text {
             text: root.selectedDateTitle(root.selectedDate)
-            color: Color.foreground
-            font.family: Style.fontFamily
+            color: root.foreground
+            font.family: root.fontFamily
             font.pixelSize: Style.font.body
             font.bold: true
           }
           Text {
             visible: root.selectedEvents.length === 0
             text: "No events"
-            color: Qt.darker(Color.foreground, 1.5)
-            font.family: Style.fontFamily
+            color: Qt.darker(root.foreground, 1.5)
+            font.family: root.fontFamily
             font.pixelSize: Style.font.caption
           }
           Repeater {
@@ -426,21 +426,28 @@ Item {
                   id: eventColumn
                   width: parent.width - Style.space(12)
                   anchors.verticalCenter: parent.verticalCenter
-                  Text { text: (modelData.time ? modelData.time + "  " : "") + modelData.title; color: Color.foreground; font.family: Style.fontFamily; font.pixelSize: Style.font.caption; elide: Text.ElideRight; width: parent.width }
+                  Text {
+                    width: parent.width
+                    text: (modelData.time ? modelData.time + "  " : "") + modelData.title
+                    color: root.foreground
+                    font.family: root.fontFamily
+                    font.pixelSize: Style.font.caption
+                    elide: Text.ElideRight
+                  }
                 }
               }
             }
           }
         }
 
-        PanelSeparator { foreground: Color.foreground }
+        PanelSeparator { foreground: root.foreground }
 
         Text {
           text: "󰁁 day   Ctrl󰁁 month   ⏎ today   r refresh   Esc close"
           anchors.left: parent.left
           anchors.right: parent.right
-          color: Util.alpha(Color.foreground, 0.55)
-          font.family: Style.fontFamily
+          color: Util.alpha(root.foreground, 0.55)
+          font.family: root.fontFamily
           font.pixelSize: Style.font.caption
           fontSizeMode: Text.HorizontalFit
           minimumPixelSize: Style.space(8)

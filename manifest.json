@@ -5,7 +5,9 @@
   "version": "1.0.0",
   "author": "Pierre Olivier Martel",
   "description": "An Omarchy 4 QuickShell Calendar Plugin",
-  "kinds": ["panel"],
+  "kinds": [
+    "panel"
+  ],
   "entryPoints": {
     "panel": "Calendar.qml"
   }
