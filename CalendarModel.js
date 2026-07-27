@@ -17,7 +17,8 @@ function parseConfig(raw) {
       result.push({
         name: String(item.name || "Calendar"),
         url: String(item.url).trim(),
-        color: String(item.color || "")
+        color: String(item.color || ""),
+        excludeDeclined: item.excludeDeclined !== false
       })
     }
     return result
@@ -89,17 +90,18 @@ function parseIcs(raw, calendar) {
     var prop = propertyLine(lines[i])
     if (!prop) continue
     if (prop.name === "BEGIN" && prop.value.toUpperCase() === "VEVENT") {
-      current = { calendar: calendar.name, color: calendar.color, summary: "(untitled)", location: "" }
+      current = { calendar: calendar.name, color: calendar.color, summary: "(untitled)", location: "", declined: false }
       continue
     }
     if (prop.name === "END" && prop.value.toUpperCase() === "VEVENT") {
-      if (current && current.start) events.push(current)
+      if (current && current.start && !(calendar.excludeDeclined && current.declined)) events.push(current)
       current = null
       continue
     }
     if (!current) continue
     if (prop.name === "SUMMARY") current.summary = unescape(prop.value)
     else if (prop.name === "LOCATION") current.location = unescape(prop.value)
+    else if (prop.name === "ATTENDEE" && String(prop.params.PARTSTAT || "").toUpperCase() === "DECLINED") current.declined = true
     else if (prop.name === "DTSTART") current.start = parseDate(prop.value, prop.params)
     else if (prop.name === "DTEND") current.end = parseDate(prop.value, prop.params)
     else if (prop.name === "RRULE") current.rule = parseRule(prop.value)
