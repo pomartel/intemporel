@@ -11,6 +11,13 @@ import "CalendarModel.js" as Model
 Item {
   id: root
 
+  // BarWidget.qml owns this panel, as Omarchy's clock owns its calendar
+  // popup. These are injected by the host so the calendar and its clock are
+  // one plugin while this full-screen panel keeps its monitor-aware layout.
+  property var bar: null
+  property var settings: ({})
+  property var anchorItem: null
+  property var hostWidget: null
   property bool opened: false
   property var calendars: []
   property var events: []

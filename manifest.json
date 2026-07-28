@@ -4,11 +4,17 @@
   "name": "Intemporel",
   "version": "1.0.0",
   "author": "Pierre Olivier Martel",
-  "description": "An Omarchy 4 QuickShell Calendar Plugin",
+  "description": "Date/time label with an Intemporel calendar popup",
   "kinds": [
-    "panel"
+    "bar-widget"
   ],
   "entryPoints": {
-    "panel": "Calendar.qml"
+    "barWidget": "BarWidget.qml"
+  },
+  "barWidget": {
+    "displayName": "Intemporel",
+    "description": "Date/time label with an Intemporel calendar popup",
+    "category": "Time",
+    "allowMultiple": false
   }
 }

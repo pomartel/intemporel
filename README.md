@@ -1,11 +1,13 @@
-# Intemporel — An Omarchy 4 Calendar Plugin
+# Intemporel — An Omarchy 4 Clock and Calendar Plugin
 
-Intemporel is a lightweight, read-only calendar panel for [Omarchy](https://omarchy.org/).
-It displays events from public iCalendar (ICS) feeds in the same visual style as
-the Omarchy shell's other panels.
+Intemporel is a clock replacement and read-only calendar for
+[Omarchy](https://omarchy.org/). It displays a date/time label in the bar and
+opens an event calendar from public iCalendar (ICS) feeds.
 
 ## Features
 
+- Drop-in replacement for `omarchy.clock`: left-click opens the calendar,
+  right-click cycles clock formats, and middle-click opens the timezone picker
 - Monthly calendar view with today and the selected day highlighted
 - Read-only event display from one or more public ICS URLs
 - Calendar-specific names and colors
@@ -32,8 +34,26 @@ The plugin is installed at:
 ~/.config/omarchy/plugins/intemporel/
 ```
 
-After installing, add the panel to your preferred clock action or keybinding.
-The panel can be opened through the Omarchy shell IPC interface:
+Replace the default clock in `~/.config/omarchy/shell.json`. Intemporel uses
+Canadian French by default; set `locale` on the bar entry to override it.
+
+```json
+{
+  "bar": {
+    "centerAnchor": "intemporel",
+    "layout": {
+      "center": [{
+        "id": "intemporel",
+        "format": "dddd HH:mm",
+        "formatAlt": "d MMMM 'W'ww yyyy",
+        "locale": "fr_CA"
+      }]
+    }
+  }
+}
+```
+
+The calendar can also be opened through the Omarchy shell IPC interface:
 
 ```bash
 omarchy-shell shell toggle intemporel
@@ -70,20 +90,21 @@ Each calendar entry supports:
 - `name`: label used internally for the calendar source
 - `url`: public, read-only ICS feed URL
 - `color`: optional color for the event marker
+- `excludeDeclined`: optional; defaults to `true`, hiding invitations you
+  declined. Set it to `false` to show them.
 
 The file is watched for changes and is reloaded automatically.
 
-## Locale-aware formatting
+## Clock and locale behavior
 
-Intemporel uses the system locale by default for weekday order, month names,
-weekday names, and event times. When the shell opening command provides an
-explicit locale, that locale controls all of those formats for that panel
-session.
+The bar label and calendar use Canadian French (`fr_CA`) by default. Set the
+bar entry's `locale` field to use another Qt locale. Right-click the clock to
+cycle label formats; the chosen format is written back to `shell.json`.
 
-For example, this opens the panel using Canadian French formatting:
+Open the calendar with the same command used by the clock action:
 
 ```bash
-omarchy-shell shell toggle intemporel '{"locale":"fr_CA"}'
+omarchy-shell shell toggle intemporel
 ```
 
 The event time follows the selected locale's short-time convention. 12-hour
@@ -139,7 +160,9 @@ omarchy plugin update intemporel
 
 The plugin consists of:
 
-- `Calendar.qml`: panel UI, keyboard handling, and shell integration
+- `BarWidget.qml`: clock label and calendar host, following the Omarchy clock structure
+- `Model.js`: clock label formatting helpers
+- `Calendar.qml`: calendar UI, keyboard handling, and shell integration
 - `CalendarModel.js`: ICS parsing, recurrence expansion, and formatting
 - `calendar.json.example`: starter calendar configuration
 - `calendar.json`: local, Git-ignored calendar configuration
