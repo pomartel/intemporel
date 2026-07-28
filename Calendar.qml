@@ -21,6 +21,9 @@ Item {
   property bool opened: false
   property var calendars: []
   property var events: []
+  property var eventsByUrl: ({})
+  property var cachedFeeds: ({})
+  property bool cacheReady: false
   property var monthEvents: ({})
   property var selectedDate: new Date()
   property var viewDate: new Date()
@@ -38,6 +41,7 @@ Item {
   property var borderSpec: Border.surfaceSpec("popups", "border", root.border, Math.max(1, Style.space(2)))
   readonly property var locale: root.explicitLocaleName ? Qt.locale(root.explicitLocaleName) : Qt.locale()
   readonly property string configPath: Quickshell.env("HOME") + "/.config/omarchy/plugins/intemporel/calendar.json"
+  readonly property string cachePath: Quickshell.env("HOME") + "/.config/omarchy/plugins/intemporel/.calendar-cache.json"
   readonly property int viewYear: viewDate.getFullYear()
   readonly property int viewMonth: viewDate.getMonth()
   readonly property string selectedKey: Model.dateKey(selectedDate)
@@ -78,6 +82,7 @@ Item {
     root.selectedDate = new Date()
     root.preferredDay = root.selectedDate.getDate()
     root.viewDate = new Date()
+    root.loadCachedFeeds()
     root.refresh()
     Qt.callLater(function() { keyCatcher.forceActiveFocus() })
   }
@@ -167,11 +172,36 @@ Item {
     root.dayCells = buildDayCells()
   }
 
+  function rebuildEvents() {
+    var combined = []
+    for (var i = 0; i < root.calendars.length; i++) {
+      var eventsForCalendar = root.eventsByUrl[root.calendars[i].url] || []
+      for (var j = 0; j < eventsForCalendar.length; j++) combined.push(eventsForCalendar[j])
+    }
+    root.events = combined
+    root.rebuildMonth()
+  }
+
+  function loadCachedFeeds() {
+    if (!root.cacheReady || !root.calendars.length) return
+    var cachedEvents = ({})
+    for (var i = 0; i < root.calendars.length; i++) {
+      var calendar = root.calendars[i]
+      var raw = root.cachedFeeds[calendar.url]
+      if (raw) cachedEvents[calendar.url] = Model.parseIcs(raw, calendar)
+    }
+    root.eventsByUrl = cachedEvents
+    root.rebuildEvents()
+    if (root.events.length && !root.fetchInProgress) root.statusText = "Cached data"
+  }
+
+  function persistCache() {
+    cacheFile.setText(Model.serializeCache(root.cachedFeeds))
+  }
+
   function refresh() {
     if (root.fetchInProgress) return
     root.fetchIndex = 0
-    root.events = []
-    root.monthEvents = ({})
     root.statusText = root.calendars.length ? "Updating..." : "No calendars configured"
     root.fetchInProgress = root.calendars.length > 0
     if (root.fetchInProgress) root.fetchNext()
@@ -192,8 +222,10 @@ Item {
 
   function parseFetchedFeed() {
     var calendar = root.calendars[root.fetchIndex]
-    var parsed = Model.parseIcs(root.fetchRaw, calendar)
-    for (var i = 0; i < parsed.length; i++) root.events.push(parsed[i])
+    root.eventsByUrl[calendar.url] = Model.parseIcs(root.fetchRaw, calendar)
+    root.cachedFeeds[calendar.url] = root.fetchRaw
+    root.persistCache()
+    root.rebuildEvents()
     root.fetchIndex++
     root.fetchNext()
   }
@@ -205,6 +237,7 @@ Item {
     printErrors: false
     onLoaded: {
       root.calendars = Model.parseConfig(text())
+      root.loadCachedFeeds()
       if (root.opened) root.refresh()
     }
     onLoadFailed: {
@@ -212,6 +245,22 @@ Item {
       root.rebuildMonth()
     }
     onFileChanged: reload()
+  }
+
+  FileView {
+    id: cacheFile
+    path: root.cachePath
+    watchChanges: false
+    printErrors: false
+    onLoaded: {
+      root.cachedFeeds = Model.parseCache(text())
+      root.cacheReady = true
+      root.loadCachedFeeds()
+    }
+    onLoadFailed: {
+      root.cachedFeeds = ({})
+      root.cacheReady = true
+    }
   }
 
   Process {

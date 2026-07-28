@@ -95,6 +95,14 @@ Each calendar entry supports:
 
 The file is watched for changes and is reloaded automatically.
 
+### Feed cache
+
+Intemporel keeps the last successful response for each feed in
+`.calendar-cache.json` beside `calendar.json`. Cached events appear immediately
+when the calendar opens; feeds then refresh in the background. The cache is
+local, ignored by Git, and may contain the same private calendar data as the
+configured ICS URLs.
+
 ## Clock and locale behavior
 
 The bar label and calendar use Canadian French (`fr_CA`) by default. Set the

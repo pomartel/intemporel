@@ -27,6 +27,24 @@ function parseConfig(raw) {
   }
 }
 
+function parseCache(raw) {
+  try {
+    var parsed = JSON.parse(String(raw || "{}"))
+    var feeds = parsed && typeof parsed.feeds === "object" && parsed.feeds ? parsed.feeds : {}
+    var result = ({})
+    for (var url in feeds) {
+      if (typeof feeds[url] === "string" && feeds[url].trim()) result[url] = feeds[url]
+    }
+    return result
+  } catch (error) {
+    return ({})
+  }
+}
+
+function serializeCache(feeds) {
+  return JSON.stringify({ version: 1, feeds: feeds || ({}) }, null, 2) + "\n"
+}
+
 function unfold(raw) {
   return String(raw || "").replace(/\r\n[ \t]/g, "").replace(/\n[ \t]/g, "").split(/\r?\n/)
 }
