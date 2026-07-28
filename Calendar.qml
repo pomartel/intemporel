@@ -42,6 +42,11 @@ Item {
   readonly property var locale: root.explicitLocaleName ? Qt.locale(root.explicitLocaleName) : Qt.locale()
   readonly property string configPath: Quickshell.env("HOME") + "/.config/omarchy/plugins/intemporel/calendar.json"
   readonly property string cachePath: Quickshell.env("HOME") + "/.config/omarchy/plugins/intemporel/.calendar-cache.json"
+  // Match Omarchy's clock KeyboardPanel: its calendar is centered on the
+  // bar edge, opening inward from top, bottom, left, or right.
+  readonly property string barPosition: root.bar && root.bar.position ? root.bar.position : "top"
+  readonly property bool verticalBar: root.barPosition === "left" || root.barPosition === "right"
+  readonly property real barThickness: root.verticalBar ? Style.bar.sizeVertical : Style.bar.sizeHorizontal
   readonly property int viewYear: viewDate.getFullYear()
   readonly property int viewMonth: viewDate.getMonth()
   readonly property string selectedKey: Model.dateKey(selectedDate)
@@ -106,6 +111,22 @@ Item {
       for (var j = 0; j < Quickshell.screens.length; j++)
         if (Quickshell.screens[j].name === Hyprland.focusedMonitor.name) return Quickshell.screens[j]
     return Quickshell.screens.length ? Quickshell.screens[0] : null
+  }
+
+  function cardX(cardWidth) {
+    var margin = Style.gapsOut
+    var x = root.verticalBar
+      ? (root.barPosition === "left" ? root.barThickness + margin : panel.width - root.barThickness - cardWidth - margin)
+      : (panel.width - cardWidth) / 2
+    return Math.max(margin, Math.min(x, panel.width - cardWidth - margin))
+  }
+
+  function cardY(cardHeight) {
+    var margin = Style.gapsOut
+    var y = root.verticalBar
+      ? (panel.height - cardHeight) / 2
+      : (root.barPosition === "bottom" ? panel.height - root.barThickness - cardHeight - margin : root.barThickness + margin)
+    return Math.max(margin, Math.min(y, panel.height - cardHeight - margin))
   }
 
   function shiftMonth(amount) {
@@ -307,13 +328,12 @@ Item {
     BorderSurface {
       id: card
       z: 1
-      width: Math.min(Style.space(380), parent.width - Style.gapsOut * 2)
+      width: Math.max(1, Math.min(Style.space(380), parent.width - (root.verticalBar ? root.barThickness + Style.gapsOut * 2 : Style.gapsOut * 2)))
       height: Math.min(
-        parent.height - Style.bar.sizeHorizontal - Style.gapsOut * 2,
+        parent.height - (root.verticalBar ? Style.gapsOut * 2 : root.barThickness + Style.gapsOut * 2),
         contentColumn.implicitHeight + card.contentTopInset + card.contentBottomInset)
-      anchors.horizontalCenter: parent.horizontalCenter
-      anchors.top: parent.top
-      anchors.topMargin: Style.bar.sizeHorizontal + Style.gapsOut
+      x: root.cardX(width)
+      y: root.cardY(height)
       color: root.background
       borderSpec: root.borderSpec
       radius: Style.cornerRadius

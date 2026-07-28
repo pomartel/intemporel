@@ -7,7 +7,8 @@ opens an event calendar from public iCalendar (ICS) feeds.
 ## Features
 
 - Drop-in replacement for `omarchy.clock`: left-click opens the calendar,
-  right-click cycles clock formats, and middle-click opens the timezone picker
+  right-click cycles clock formats, and middle-click opens the timezone picker.
+  The calendar opens inward from whichever screen edge holds the bar.
 - Monthly calendar view with today and the selected day highlighted
 - Read-only event display from one or more public ICS URLs
 - Calendar-specific names and colors
