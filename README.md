@@ -99,10 +99,10 @@ The file is watched for changes and is reloaded automatically.
 ### Feed cache
 
 Intemporel keeps the last successful response for each feed in
-`.calendar-cache.json` beside `calendar.json`. Cached events appear immediately
+`$XDG_CACHE_HOME/intemporel-calendar-cache.json` (or
+`~/.cache/intemporel-calendar-cache.json`). Cached events appear immediately
 when the calendar opens; feeds then refresh in the background. The cache is
-local, ignored by Git, and may contain the same private calendar data as the
-configured ICS URLs.
+local and may contain the same private calendar data as the configured ICS URLs.
 
 ## Clock and locale behavior
 

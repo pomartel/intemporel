@@ -41,7 +41,11 @@ Item {
   property var borderSpec: Border.surfaceSpec("popups", "border", root.border, Math.max(1, Style.space(2)))
   readonly property var locale: root.explicitLocaleName ? Qt.locale(root.explicitLocaleName) : Qt.locale()
   readonly property string configPath: Quickshell.env("HOME") + "/.config/omarchy/plugins/intemporel/calendar.json"
-  readonly property string cachePath: Quickshell.env("HOME") + "/.config/omarchy/plugins/intemporel/.calendar-cache.json"
+  // Omarchy hot-reloads all plugins whenever any file below the plugin directory
+  // changes. Keep mutable feed data in the user cache directory so a successful
+  // refresh does not unload and recreate the whole shell plugin set.
+  readonly property string cacheDirectory: Quickshell.env("XDG_CACHE_HOME") || (Quickshell.env("HOME") + "/.cache")
+  readonly property string cachePath: root.cacheDirectory + "/intemporel-calendar-cache.json"
   // Match Omarchy's clock KeyboardPanel: its calendar is centered on the
   // bar edge, opening inward from top, bottom, left, or right.
   readonly property string barPosition: root.bar && root.bar.position ? root.bar.position : "top"
