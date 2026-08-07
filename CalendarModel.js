@@ -161,7 +161,7 @@ function expandEvent(target, event, year, month) {
     return
   }
   var freq = String(event.rule.FREQ || "").toUpperCase()
-  if (["DAILY", "WEEKLY", "MONTHLY"].indexOf(freq) < 0) {
+  if (["DAILY", "WEEKLY", "MONTHLY", "YEARLY"].indexOf(freq) < 0) {
     if (overlapsMonth(event, year, month)) addOccurrence(target, event, event.start.date)
     return
   }
@@ -176,7 +176,8 @@ function expandEvent(target, event, year, month) {
     if (cursor >= monthBounds(year, month).start) addOccurrence(target, event, cursor)
     if (freq === "DAILY") cursor.setDate(cursor.getDate() + interval)
     else if (freq === "WEEKLY") cursor.setDate(cursor.getDate() + 7 * interval)
-    else cursor.setMonth(cursor.getMonth() + interval)
+    else if (freq === "MONTHLY") cursor.setMonth(cursor.getMonth() + interval)
+    else cursor.setFullYear(cursor.getFullYear() + interval)
   }
 }
 
