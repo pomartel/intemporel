@@ -62,8 +62,8 @@ omarchy-shell shell toggle intemporel
 
 ## Configuration
 
-Copy `calendar.json.example` to `calendar.json` inside the plugin directory, then
-edit the local file:
+Copy `calendar.json.example` to `~/.config/intemporel/calendar.json` (the
+preferred location), then edit the local file:
 
 ```json
 {
@@ -82,9 +82,12 @@ edit the local file:
 }
 ```
 
-`calendar.json` is intentionally not tracked by Git, so personal calendar URLs
-are preserved when the plugin updates. The example file is safe to replace or
-extend with your own read-only ICS feeds.
+`~/.config/intemporel/calendar.json` is intentionally outside the plugin tree,
+so personal calendar URLs are preserved when the plugin updates and can be
+encrypted by yadm. For compatibility, the plugin also accepts the legacy
+`calendar.json` inside its own directory; when both exist, the external file
+takes precedence. The example file is safe to replace or extend with your own
+read-only ICS feeds.
 
 Each calendar entry supports:
 
@@ -174,7 +177,9 @@ The plugin consists of:
 - `Calendar.qml`: calendar UI, keyboard handling, and shell integration
 - `CalendarModel.js`: ICS parsing, recurrence expansion, and formatting
 - `calendar.json.example`: starter calendar configuration
-- `calendar.json`: local, Git-ignored calendar configuration
+- `~/.config/intemporel/calendar.json`: preferred local calendar configuration,
+  outside the updatable plugin directory
+- `calendar.json`: optional legacy configuration inside the plugin directory
 - `manifest.json`: Omarchy plugin metadata and entry point
 
 Validate the plugin before submitting changes:

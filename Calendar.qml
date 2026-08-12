@@ -40,7 +40,11 @@ Item {
   property color border: Color.popups.border
   property var borderSpec: Border.surfaceSpec("popups", "border", root.border, Math.max(1, Style.space(2)))
   readonly property var locale: root.explicitLocaleName ? Qt.locale(root.explicitLocaleName) : Qt.locale()
-  readonly property string configPath: Quickshell.env("HOME") + "/.config/omarchy/plugins/intemporel/calendar.json"
+  // Prefer private configuration outside the watched, updatable plugin tree.
+  // Keep the old in-plugin path as a compatibility fallback for existing setups.
+  readonly property string configPath: Quickshell.env("HOME") + "/.config/intemporel/calendar.json"
+  readonly property string legacyConfigPath: Quickshell.env("HOME") + "/.config/omarchy/plugins/intemporel/calendar.json"
+  property bool externalConfigAvailable: false
   // Omarchy hot-reloads all plugins whenever any file below the plugin directory
   // changes. Keep mutable feed data in the user cache directory so a successful
   // refresh does not unload and recreate the whole shell plugin set.
@@ -255,19 +259,43 @@ Item {
     root.fetchNext()
   }
 
+  function loadCalendarConfig(configText) {
+    root.calendars = Model.parseConfig(configText)
+    root.loadCachedFeeds()
+    if (root.opened) root.refresh()
+  }
+
+  function clearCalendarConfig() {
+    root.calendars = []
+    root.rebuildMonth()
+  }
+
   FileView {
-    id: configFile
+    id: externalConfigFile
     path: root.configPath
     watchChanges: true
     printErrors: false
     onLoaded: {
-      root.calendars = Model.parseConfig(text())
-      root.loadCachedFeeds()
-      if (root.opened) root.refresh()
+      root.externalConfigAvailable = true
+      root.loadCalendarConfig(text())
     }
     onLoadFailed: {
-      root.calendars = []
-      root.rebuildMonth()
+      root.externalConfigAvailable = false
+      legacyConfigFile.reload()
+    }
+    onFileChanged: reload()
+  }
+
+  FileView {
+    id: legacyConfigFile
+    path: root.legacyConfigPath
+    watchChanges: true
+    printErrors: false
+    onLoaded: {
+      if (!root.externalConfigAvailable) root.loadCalendarConfig(text())
+    }
+    onLoadFailed: {
+      if (!root.externalConfigAvailable) root.clearCalendarConfig()
     }
     onFileChanged: reload()
   }
