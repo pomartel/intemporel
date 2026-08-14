@@ -1,6 +1,6 @@
 # Intemporel — Omarchy Quattro Clock/Calendar Plugin
 
-Intemporel is a clockreplacement and read-only calendar for
+Intemporel is a clock replacement and read-only calendar for
 [Omarchy](https://omarchy.org/). It displays a date/time label in the bar and
 opens an event calendar from public iCalendar (ICS) feeds.
 
@@ -8,7 +8,6 @@ opens an event calendar from public iCalendar (ICS) feeds.
 
 - Drop-in replacement for `omarchy.clock`: left-click opens the calendar,
   right-click cycles clock formats, and middle-click opens the timezone picker.
-  The calendar opens inward from whichever screen edge holds the bar.
 - Monthly calendar view with today and the selected day highlighted
 - Read-only event display from one or more public ICS URLs
 - Calendar-specific names and colors
@@ -21,12 +20,6 @@ Install the plugin with the Omarchy plugin manager:
 
 ```bash
 omarchy plugin add https://github.com/pomartel/intemporel.git
-```
-
-Then enable it if the installer did not enable it automatically:
-
-```bash
-omarchy plugin enable intemporel
 ```
 
 The plugin is installed at:
