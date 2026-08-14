@@ -40,9 +40,9 @@ Item {
   property color border: Color.popups.border
   property var borderSpec: Border.surfaceSpec("popups", "border", root.border, Math.max(1, Style.space(2)))
   readonly property var locale: root.explicitLocaleName ? Qt.locale(root.explicitLocaleName) : Qt.locale()
-  readonly property string externalConfigPath: Quickshell.env("HOME") + "/.config/intemporel/calendar.json"
-  readonly property string configPath: Quickshell.env("HOME") + "/.config/omarchy/plugins/intemporel/calendar.json"
-  readonly property string exampleConfigPath: Quickshell.env("HOME") + "/.config/omarchy/plugins/intemporel/calendar.json.example"
+  readonly property string externalConfigPath: Quickshell.env("HOME") + "/.config/intemporel/calendar.jsonc"
+  readonly property string configPath: Quickshell.env("HOME") + "/.config/omarchy/plugins/intemporel/calendar.jsonc"
+  readonly property string exampleConfigPath: Quickshell.env("HOME") + "/.config/omarchy/plugins/intemporel/calendar.jsonc.example"
   property bool externalConfigAvailable: false
   // Omarchy hot-reloads all plugins whenever any file below the plugin directory
   // changes. Keep mutable feed data in the user cache directory so a successful
