@@ -209,45 +209,76 @@ function monthBounds(year, month) {
   return { start: new Date(year, month, 1), end: new Date(year, month, daysInMonth(year, month), 23, 59, 59) }
 }
 
-function addOccurrence(target, event, date) {
-  var key = dateKey(date)
-  if (!target[key]) target[key] = []
-  var copy = {
-    calendar: event.calendar,
-    color: event.color,
-    summary: event.summary,
-    location: event.location,
-    allDay: event.start.allDay,
-    start: new Date(date.getTime()),
-    end: event.end ? new Date(event.end.date.getTime()) : null
-  }
-  target[key].push(copy)
+function occurrenceEnd(event, date) {
+  if (!event.end) return null
+  return new Date(date.getTime() + event.end.date.getTime() - event.start.date.getTime())
 }
 
-function overlapsMonth(event, year, month) {
+function addOccurrence(target, event, date) {
+  var end = occurrenceEnd(event, date)
+  var last = end ? new Date(end.getTime() - 1) : new Date(date.getTime())
+  var day = new Date(date.getFullYear(), date.getMonth(), date.getDate())
+  var lastDay = new Date(last.getFullYear(), last.getMonth(), last.getDate())
+  while (day <= lastDay) {
+    var key = dateKey(day)
+    if (!target[key]) target[key] = []
+    target[key].push({
+      calendar: event.calendar,
+      color: event.color,
+      summary: event.summary,
+      location: event.location,
+      allDay: event.start.allDay,
+      start: new Date(date.getTime()),
+      end: end ? new Date(end.getTime()) : null
+    })
+    day.setDate(day.getDate() + 1)
+  }
+}
+
+function occurrenceOverlapsMonth(event, date, year, month) {
   var bounds = monthBounds(year, month)
-  return event.start.date <= bounds.end && (!event.end || event.end.date >= bounds.start)
+  var end = occurrenceEnd(event, date)
+  return date <= bounds.end && (!end || end > bounds.start)
+}
+
+function fastForward(cursor, frequency, interval, threshold) {
+  if (cursor >= threshold) return
+  var dayMilliseconds = 24 * 60 * 60 * 1000
+  if (frequency === "DAILY" || frequency === "WEEKLY") {
+    var stepDays = frequency === "DAILY" ? interval : interval * 7
+    var steps = Math.max(0, Math.floor((threshold.getTime() - cursor.getTime()) / dayMilliseconds / stepDays) - 1)
+    if (steps) cursor.setDate(cursor.getDate() + steps * stepDays)
+  } else if (frequency === "MONTHLY") {
+    var months = (threshold.getFullYear() - cursor.getFullYear()) * 12 + threshold.getMonth() - cursor.getMonth()
+    var monthSteps = Math.max(0, Math.floor(months / interval) - 1)
+    if (monthSteps) cursor.setMonth(cursor.getMonth() + monthSteps * interval)
+  } else if (frequency === "YEARLY") {
+    var years = threshold.getFullYear() - cursor.getFullYear()
+    var yearSteps = Math.max(0, Math.floor(years / interval) - 1)
+    if (yearSteps) cursor.setFullYear(cursor.getFullYear() + yearSteps * interval)
+  }
 }
 
 function expandEvent(target, event, year, month) {
   if (!event.rule) {
-    if (overlapsMonth(event, year, month)) addOccurrence(target, event, event.start.date)
+    if (occurrenceOverlapsMonth(event, event.start.date, year, month)) addOccurrence(target, event, event.start.date)
     return
   }
   var freq = String(event.rule.FREQ || "").toUpperCase()
   if (["DAILY", "WEEKLY", "MONTHLY", "YEARLY"].indexOf(freq) < 0) {
-    if (overlapsMonth(event, year, month)) addOccurrence(target, event, event.start.date)
+    if (occurrenceOverlapsMonth(event, event.start.date, year, month)) addOccurrence(target, event, event.start.date)
     return
   }
   var interval = Math.max(1, Number(event.rule.INTERVAL || 1))
   var count = Number(event.rule.COUNT || 0)
   var until = event.rule.UNTIL ? parseDate(event.rule.UNTIL, {}).date : null
   var cursor = new Date(event.start.date.getTime())
-  for (var n = 0; n < 1000; n++) {
+  if (!count) fastForward(cursor, freq, interval, monthBounds(year, month).start)
+  for (var n = 0; n < 100000; n++) {
     if (count && n >= count) break
     if (until && cursor > until) break
     if (cursor > monthBounds(year, month).end) break
-    if (cursor >= monthBounds(year, month).start) addOccurrence(target, event, cursor)
+    if (occurrenceOverlapsMonth(event, cursor, year, month)) addOccurrence(target, event, cursor)
     if (freq === "DAILY") cursor.setDate(cursor.getDate() + interval)
     else if (freq === "WEEKLY") cursor.setDate(cursor.getDate() + 7 * interval)
     else if (freq === "MONTHLY") cursor.setMonth(cursor.getMonth() + interval)
