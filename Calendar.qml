@@ -582,26 +582,24 @@ Item {
           }
         }
 
-        Loader {
-          active: root.keyboardHelpVisible
+        Column {
+          visible: root.keyboardHelpVisible
           width: parent.width
-          sourceComponent: Component {
-            Column {
-              width: parent.width
-              spacing: Style.space(4)
-              PanelSeparator { width: parent.width; foreground: root.foreground }
-              Text {
-                width: parent.width
-                text: "󰁁 day   Ctrl󰁁 month   ⏎ today   r refresh   Esc close   ? hide help"
-                color: Util.alpha(root.foreground, 0.55)
-                font.family: root.fontFamily
-                font.pixelSize: Style.font.caption
-                fontSizeMode: Text.HorizontalFit
-                minimumPixelSize: Style.space(8)
-                horizontalAlignment: Text.AlignHCenter
-                wrapMode: Text.NoWrap
-              }
-            }
+          height: visible ? implicitHeight : 0
+          spacing: contentColumn.spacing
+
+          PanelSeparator { width: parent.width; foreground: root.foreground }
+
+          Text {
+            width: parent.width
+            text: "󰁁 day   Ctrl󰁁 month   ⏎ today   r refresh   Esc close"
+            color: Util.alpha(root.foreground, 0.55)
+            font.family: root.fontFamily
+            font.pixelSize: Style.font.caption
+            fontSizeMode: Text.HorizontalFit
+            minimumPixelSize: Style.space(8)
+            horizontalAlignment: Text.AlignHCenter
+            wrapMode: Text.NoWrap
           }
         }
       }
