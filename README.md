@@ -145,13 +145,15 @@ First remove the `intemporel` entry from `~/.config/omarchy/shell.json` and
 restore the clock widget you want to use. Then remove the plugin:
 
 ```bash
-omarchy plugin remove intemporel && \
-  rm -f "${XDG_CACHE_HOME:-$HOME/.cache}/intemporel-calendar-cache.json"
+omarchy plugin remove intemporel
 ```
 
 The command disables and unloads the plugin, including its in-plugin calendar
-configuration, then removes its feed cache. The cache is only removed after a
-successful plugin removal.
+configuration. It preserves the feed cache. To discard cached events too, run:
+
+```bash
+rm -f "~/.cache/intemporel-calendar-cache.json"
+```
 
 ## Development
 
