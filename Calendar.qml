@@ -40,13 +40,9 @@ Item {
   property color border: Color.popups.border
   property var borderSpec: Border.surfaceSpec("popups", "border", root.border, Math.max(1, Style.space(2)))
   readonly property var locale: root.explicitLocaleName ? Qt.locale(root.explicitLocaleName) : Qt.locale()
-  // Prefer private configuration outside the watched, updatable plugin tree.
-  // Keep the old in-plugin path as a compatibility fallback for existing setups.
-  readonly property string configDirectory: Quickshell.env("HOME") + "/.config/intemporel"
   readonly property string configPath: Quickshell.env("HOME") + "/.config/intemporel/calendar.json"
-  readonly property string exampleConfigPath: Quickshell.env("HOME") + "/.config/omarchy/plugins/intemporel/calendar.json.example"
-  readonly property string legacyConfigPath: Quickshell.env("HOME") + "/.config/omarchy/plugins/intemporel/calendar.json"
-  property bool externalConfigAvailable: false
+  readonly property string fallbackConfigPath: Quickshell.env("HOME") + "/.config/omarchy/plugins/intemporel/calendar.json"
+  property bool configAvailable: false
   // Omarchy hot-reloads all plugins whenever any file below the plugin directory
   // changes. Keep mutable feed data in the user cache directory so a successful
   // refresh does not unload and recreate the whole shell plugin set.
@@ -273,31 +269,31 @@ Item {
   }
 
   FileView {
-    id: externalConfigFile
+    id: configFile
     path: root.configPath
     watchChanges: true
     printErrors: false
     onLoaded: {
-      root.externalConfigAvailable = true
+      root.configAvailable = true
       root.loadCalendarConfig(text())
     }
     onLoadFailed: {
-      root.externalConfigAvailable = false
-      legacyConfigFile.reload()
+      root.configAvailable = false
+      fallbackConfigFile.reload()
     }
     onFileChanged: reload()
   }
 
   FileView {
-    id: legacyConfigFile
-    path: root.legacyConfigPath
+    id: fallbackConfigFile
+    path: root.fallbackConfigPath
     watchChanges: true
     printErrors: false
     onLoaded: {
-      if (!root.externalConfigAvailable) root.loadCalendarConfig(text())
+      if (!root.configAvailable) root.loadCalendarConfig(text())
     }
     onLoadFailed: {
-      if (!root.externalConfigAvailable) root.clearCalendarConfig()
+      if (!root.configAvailable) root.clearCalendarConfig()
     }
     onFileChanged: reload()
   }
@@ -331,26 +327,6 @@ Item {
         root.fetchIndex++
         root.fetchNext()
       }
-    }
-  }
-
-  // Omarchy's installer only clones plugin files. Seed the external
-  // configuration after the plugin first loads, without replacing an existing
-  // user configuration.
-  Process {
-    id: configDirectoryProcess
-    command: ["mkdir", "-p", root.configDirectory]
-    running: true
-    onExited: function(exitCode) {
-      if (exitCode === 0) configSeedProcess.running = true
-    }
-  }
-
-  Process {
-    id: configSeedProcess
-    command: ["cp", "-n", "--", root.exampleConfigPath, root.configPath]
-    onExited: function(exitCode) {
-      if (exitCode === 0) externalConfigFile.reload()
     }
   }
 
