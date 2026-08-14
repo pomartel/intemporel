@@ -80,7 +80,7 @@ function stripTrailingCommas(raw) {
   return output
 }
 
-function parseConfigResult(raw) {
+function parseConfigResult(raw, defaultCalendarName) {
   try {
     var parsed = JSON.parse(stripTrailingCommas(stripJsonComments(raw)))
     if (!parsed || typeof parsed !== "object" || !Array.isArray(parsed.calendars))
@@ -91,7 +91,7 @@ function parseConfigResult(raw) {
       var item = calendars[i]
       if (!item || !String(item.url || "").trim()) continue
       result.push({
-        name: String(item.name || "Calendar"),
+        name: String(item.name || defaultCalendarName || "Calendar"),
         url: String(item.url).trim(),
         color: String(item.color || ""),
         excludeDeclined: item.excludeDeclined !== false
@@ -103,8 +103,8 @@ function parseConfigResult(raw) {
   }
 }
 
-function parseConfig(raw) {
-  return parseConfigResult(raw).calendars
+function parseConfig(raw, defaultCalendarName) {
+  return parseConfigResult(raw, defaultCalendarName).calendars
 }
 
 function parseCache(raw) {

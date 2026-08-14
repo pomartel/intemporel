@@ -36,7 +36,9 @@ The plugin is installed at:
 ```
 
 Replace the default clock in `~/.config/omarchy/shell.json`. Intemporel uses
-the system locale by default; set `locale` on the bar entry to override it.
+the system locale by default for dates, times, and its interface; English,
+French, and Spanish interface translations are included. Set `locale` on the
+bar entry to override it.
 
 ```json
 {

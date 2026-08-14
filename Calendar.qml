@@ -7,6 +7,7 @@ import Quickshell.Wayland
 import qs.Ui
 import qs.Commons
 import "CalendarModel.js" as Model
+import "Translations.js" as Translations
 
 Item {
   id: root
@@ -65,7 +66,7 @@ Item {
     for (var i = 0; i < list.length; i++) formatted.push(Model.formatEvent(list[i], root.locale))
     return formatted
   }
-  readonly property string monthTitle: (root.capitalize(root.locale.toString(root.viewDate, "MMMM")) + " " + root.viewYear).toUpperCase()
+  readonly property string monthTitle: root.capitalize(root.locale.toString(root.viewDate, root.t("monthYearFormat"))).toUpperCase()
   property var dayCells: []
   readonly property var weekdayNames: buildWeekdayNames()
   readonly property var targetScreen: findTargetScreen()
@@ -75,10 +76,10 @@ Item {
     return text ? text.charAt(0).toUpperCase() + text.slice(1) : text
   }
 
+  function t(key) { return Translations.get(root.locale, key) }
+
   function selectedDateTitle(date) {
-    return root.capitalize(root.locale.toString(date, "dddd"))
-      + ", " + root.locale.toString(date, "d")
-      + " " + root.locale.toString(date, "MMMM")
+    return root.capitalize(root.locale.toString(date, root.t("selectedDateFormat")))
   }
 
   function open(payloadJson) {
@@ -223,7 +224,7 @@ Item {
     }
     root.eventsByUrl = cachedEvents
     root.rebuildEvents()
-    if (root.events.length && !root.fetchInProgress) root.statusText = "Cached data"
+    if (root.events.length && !root.fetchInProgress) root.statusText = root.t("cachedData")
   }
 
   function persistCache() {
@@ -233,11 +234,11 @@ Item {
   function refresh() {
     if (root.fetchInProgress) return
     if (root.configError) {
-      root.statusText = "Calendar configuration is invalid"
+      root.statusText = root.t("invalidConfiguration")
       return
     }
     root.fetchIndex = 0
-    root.statusText = root.calendars.length ? "Updating..." : "No calendars configured"
+    root.statusText = root.calendars.length ? root.t("updating") : root.t("noCalendarsConfigured")
     root.fetchInProgress = root.calendars.length > 0
     if (root.fetchInProgress) root.fetchNext()
   }
@@ -246,7 +247,7 @@ Item {
     if (root.fetchIndex >= root.calendars.length) {
       root.fetchInProgress = false
       root.rebuildMonth()
-      if (!root.statusText || root.statusText === "Updating...") root.statusText = "Updated"
+      if (!root.statusText || root.statusText === root.t("updating")) root.statusText = root.t("updated")
       return
     }
     var calendar = root.calendars[root.fetchIndex]
@@ -266,7 +267,7 @@ Item {
   }
 
   function loadCalendarConfig(configText) {
-    var parsed = Model.parseConfigResult(configText)
+    var parsed = Model.parseConfigResult(configText, root.t("calendar"))
     root.configError = parsed.error
     root.calendars = parsed.calendars
     root.eventsByUrl = ({})
@@ -339,7 +340,7 @@ Item {
     onExited: function(exitCode) {
       if (exitCode === 0 && root.fetchRaw.trim()) root.parseFetchedFeed()
       else {
-        root.statusText = "A calendar could not be refreshed"
+        root.statusText = root.t("refreshFailed")
         root.fetchIndex++
         root.fetchNext()
       }
@@ -424,7 +425,7 @@ Item {
           PanelHero {
             id: hero
             anchors.fill: parent
-            title: "Calendar"
+            title: root.t("calendar")
             meta: root.statusText
             fontFamily: root.fontFamily
 
@@ -440,9 +441,9 @@ Item {
 
           MouseArea {
             anchors.fill: parent
-            visible: root.statusText === "No calendars configured"
-                  || root.statusText === "Updating..."
-                  || root.statusText === "Updated"
+            visible: root.statusText === root.t("noCalendarsConfigured")
+                  || root.statusText === root.t("updating")
+                  || root.statusText === root.t("updated")
                   || root.configError
             cursorShape: Qt.PointingHandCursor
             onClicked: root.openConfigEditor()
@@ -548,7 +549,7 @@ Item {
           }
           Text {
             visible: root.selectedEvents.length === 0
-            text: "No events"
+            text: root.t("noEvents")
             color: Qt.darker(root.foreground, 1.5)
             font.family: root.fontFamily
             font.pixelSize: Style.font.caption
@@ -592,7 +593,7 @@ Item {
 
           Text {
             width: parent.width
-            text: "󰁁 day   Ctrl󰁁 month   ⏎ today   r refresh   Esc close"
+            text: root.t("keyboardHelp")
             color: Util.alpha(root.foreground, 0.55)
             font.family: root.fontFamily
             font.pixelSize: Style.font.caption
