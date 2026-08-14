@@ -40,9 +40,10 @@ Item {
   property color border: Color.popups.border
   property var borderSpec: Border.surfaceSpec("popups", "border", root.border, Math.max(1, Style.space(2)))
   readonly property var locale: root.explicitLocaleName ? Qt.locale(root.explicitLocaleName) : Qt.locale()
-  readonly property string configPath: Quickshell.env("HOME") + "/.config/intemporel/calendar.json"
-  readonly property string fallbackConfigPath: Quickshell.env("HOME") + "/.config/omarchy/plugins/intemporel/calendar.json"
-  property bool configAvailable: false
+  readonly property string externalConfigPath: Quickshell.env("HOME") + "/.config/intemporel/calendar.json"
+  readonly property string configPath: Quickshell.env("HOME") + "/.config/omarchy/plugins/intemporel/calendar.json"
+  readonly property string exampleConfigPath: Quickshell.env("HOME") + "/.config/omarchy/plugins/intemporel/calendar.json.example"
+  property bool externalConfigAvailable: false
   // Omarchy hot-reloads all plugins whenever any file below the plugin directory
   // changes. Keep mutable feed data in the user cache directory so a successful
   // refresh does not unload and recreate the whole shell plugin set.
@@ -269,31 +270,31 @@ Item {
   }
 
   FileView {
-    id: configFile
-    path: root.configPath
+    id: externalConfigFile
+    path: root.externalConfigPath
     watchChanges: true
     printErrors: false
     onLoaded: {
-      root.configAvailable = true
+      root.externalConfigAvailable = true
       root.loadCalendarConfig(text())
     }
     onLoadFailed: {
-      root.configAvailable = false
-      fallbackConfigFile.reload()
+      root.externalConfigAvailable = false
+      configFile.reload()
     }
     onFileChanged: reload()
   }
 
   FileView {
-    id: fallbackConfigFile
-    path: root.fallbackConfigPath
+    id: configFile
+    path: root.configPath
     watchChanges: true
     printErrors: false
     onLoaded: {
-      if (!root.configAvailable) root.loadCalendarConfig(text())
+      if (!root.externalConfigAvailable) root.loadCalendarConfig(text())
     }
     onLoadFailed: {
-      if (!root.configAvailable) root.clearCalendarConfig()
+      if (!root.externalConfigAvailable) root.clearCalendarConfig()
     }
     onFileChanged: reload()
   }
@@ -327,6 +328,25 @@ Item {
         root.fetchIndex++
         root.fetchNext()
       }
+    }
+  }
+
+  // The installer only clones plugin files, so make the editable configuration
+  // from the shipped template when the plugin first loads.
+  Process {
+    id: configSeedCheckProcess
+    command: ["test", "-e", root.exampleConfigPath]
+    running: true
+    onExited: function(exitCode) {
+      if (exitCode === 0) configSeedProcess.running = true
+    }
+  }
+
+  Process {
+    id: configSeedProcess
+    command: ["mv", "-n", "--", root.exampleConfigPath, root.configPath]
+    onExited: function(exitCode) {
+      if (exitCode === 0) configFile.reload()
     }
   }
 
