@@ -80,10 +80,12 @@ function stripTrailingCommas(raw) {
   return output
 }
 
-function parseConfig(raw) {
+function parseConfigResult(raw) {
   try {
     var parsed = JSON.parse(stripTrailingCommas(stripJsonComments(raw)))
-    var calendars = Array.isArray(parsed.calendars) ? parsed.calendars : []
+    if (!parsed || typeof parsed !== "object" || !Array.isArray(parsed.calendars))
+      return { calendars: [], error: "The calendars field must be an array." }
+    var calendars = parsed.calendars
     var result = []
     for (var i = 0; i < calendars.length; i++) {
       var item = calendars[i]
@@ -95,10 +97,14 @@ function parseConfig(raw) {
         excludeDeclined: item.excludeDeclined !== false
       })
     }
-    return result
+    return { calendars: result, error: "" }
   } catch (error) {
-    return []
+    return { calendars: [], error: "Invalid JSONC." }
   }
+}
+
+function parseConfig(raw) {
+  return parseConfigResult(raw).calendars
 }
 
 function parseCache(raw) {

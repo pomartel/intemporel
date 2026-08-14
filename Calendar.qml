@@ -29,6 +29,7 @@ Item {
   property var viewDate: new Date()
   property int preferredDay: selectedDate.getDate()
   property string statusText: ""
+  property string configError: ""
   property int fetchIndex: 0
   property string fetchRaw: ""
   property bool fetchInProgress: false
@@ -108,7 +109,7 @@ Item {
 
   function openConfigEditor() {
     root.close()
-    configEditorProcess.command = ["omarchy-launch-editor", root.configPath]
+    configEditorProcess.command = ["omarchy-launch-editor", root.externalConfigAvailable ? root.externalConfigPath : root.configPath]
     configEditorProcess.running = true
   }
 
@@ -233,6 +234,10 @@ Item {
 
   function refresh() {
     if (root.fetchInProgress) return
+    if (root.configError) {
+      root.statusText = "Calendar configuration is invalid"
+      return
+    }
     root.fetchIndex = 0
     root.statusText = root.calendars.length ? "Updating..." : "No calendars configured"
     root.fetchInProgress = root.calendars.length > 0
@@ -263,13 +268,21 @@ Item {
   }
 
   function loadCalendarConfig(configText) {
-    root.calendars = Model.parseConfig(configText)
+    var parsed = Model.parseConfigResult(configText)
+    root.configError = parsed.error
+    root.calendars = parsed.calendars
+    root.eventsByUrl = ({})
+    root.events = []
+    root.rebuildMonth()
     root.loadCachedFeeds()
     if (root.opened) root.refresh()
   }
 
   function clearCalendarConfig() {
+    root.configError = ""
     root.calendars = []
+    root.eventsByUrl = ({})
+    root.events = []
     root.rebuildMonth()
   }
 
@@ -450,6 +463,7 @@ Item {
             visible: root.statusText === "No calendars configured"
                   || root.statusText === "Updating..."
                   || root.statusText === "Updated"
+                  || root.configError
             cursorShape: Qt.PointingHandCursor
             onClicked: root.openConfigEditor()
           }
