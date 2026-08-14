@@ -36,7 +36,7 @@ The plugin is installed at:
 ```
 
 Replace the default clock in `~/.config/omarchy/shell.json`. Intemporel uses
-Canadian French by default; set `locale` on the bar entry to override it.
+the system locale by default; set `locale` on the bar entry to override it.
 
 ```json
 {
@@ -46,8 +46,7 @@ Canadian French by default; set `locale` on the bar entry to override it.
       "center": [{
         "id": "intemporel",
         "format": "dddd HH:mm",
-        "formatAlt": "d MMMM 'W'ww yyyy",
-        "locale": "fr_CA"
+        "formatAlt": "d MMMM 'W'ww yyyy"
       }]
     }
   }
@@ -109,9 +108,10 @@ local and may contain the same private calendar data as the configured ICS URLs.
 
 ## Clock and locale behavior
 
-The bar label and calendar use Canadian French (`fr_CA`) by default. Set the
-bar entry's `locale` field to use another Qt locale. Right-click the clock to
-cycle label formats; the chosen format is written back to `shell.json`.
+The bar label and calendar use the system locale by default. Set the bar
+entry's `locale` field (for example, `"locale": "fr_CA"`) to use a specific
+Qt locale. Right-click the clock to cycle label formats; the chosen format is
+written back to `shell.json`.
 
 Open the calendar with the same command used by the clock action:
 
@@ -166,6 +166,23 @@ Update installed plugins with:
 
 ```bash
 omarchy plugin update intemporel
+```
+
+## Removal
+
+First remove the `intemporel` entry from `~/.config/omarchy/shell.json` and
+restore the clock widget you want to use. Then remove the plugin:
+
+```bash
+omarchy plugin remove intemporel
+```
+
+The command disables and unloads the plugin before removing it. It preserves
+your calendar configuration and cache. To discard those local files too, run:
+
+```bash
+rm -rf ~/.config/intemporel
+rm -f "${XDG_CACHE_HOME:-$HOME/.cache}/intemporel-calendar-cache.json"
 ```
 
 ## Development

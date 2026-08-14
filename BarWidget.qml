@@ -27,7 +27,7 @@ BarWidget {
   function panelPayload() {
     var screenName = button.QsWindow && button.QsWindow.window && button.QsWindow.window.screen
       ? button.QsWindow.window.screen.name : ""
-    return JSON.stringify({ screen: screenName, locale: setting("locale", "fr_CA") })
+    return JSON.stringify({ screen: screenName, locale: setting("locale", "") })
   }
 
   function refresh() {
@@ -48,7 +48,7 @@ BarWidget {
   }
 
   function formatted(date) {
-    return Qt.locale(setting("locale", "fr_CA")).toString(date,
+    return Qt.locale(setting("locale", "")).toString(date,
       activeFormat.replace(/ww/g, Model.isoWeekLiteral(date.getFullYear(), date.getMonth(), date.getDate())))
   }
 
