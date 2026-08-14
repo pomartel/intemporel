@@ -46,7 +46,8 @@ the system locale by default; set `locale` on the bar entry to override it.
       "center": [{
         "id": "intemporel",
         "format": "dddd HH:mm",
-        "formatAlt": "d MMMM 'W'ww yyyy"
+        "formatAlt": "d MMMM 'W'ww yyyy",
+        "locale": "fr_CA"
       }]
     }
   }
