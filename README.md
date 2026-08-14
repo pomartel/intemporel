@@ -91,7 +91,8 @@ Each calendar entry supports:
 - `excludeDeclined`: optional; defaults to `true`, hiding invitations you
   declined. Set it to `false` to show them.
 
-The file is watched for changes and is reloaded automatically.
+The file uses JSONC: comments and trailing commas are allowed. It is watched
+for changes and reloaded automatically.
 
 ### Feed cache
 
@@ -127,7 +128,7 @@ delete calendar data.
 
 Check that:
 
-1. `calendar.json` is valid JSON.
+1. `calendar.json` is valid JSONC.
 2. Each feed URL is reachable without authentication.
 3. `curl -fsSL "https://example.com/calendar.ics"` can fetch the feed.
 4. The feed contains valid `VEVENT` entries.

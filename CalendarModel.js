@@ -6,9 +6,83 @@ function dateKey(date) {
   return date.getFullYear() + "-" + pad(date.getMonth() + 1) + "-" + pad(date.getDate())
 }
 
+function stripJsonComments(raw) {
+  var input = String(raw || "{}")
+  var output = ""
+  var inString = false
+  var escaped = false
+  var lineComment = false
+  var blockComment = false
+  for (var i = 0; i < input.length; i++) {
+    var character = input.charAt(i)
+    var next = input.charAt(i + 1)
+    if (lineComment) {
+      if (character === "\n" || character === "\r") {
+        lineComment = false
+        output += character
+      }
+      continue
+    }
+    if (blockComment) {
+      if (character === "*" && next === "/") {
+        blockComment = false
+        i++
+      } else if (character === "\n" || character === "\r") output += character
+      continue
+    }
+    if (inString) {
+      output += character
+      if (escaped) escaped = false
+      else if (character === "\\") escaped = true
+      else if (character === "\"") inString = false
+      continue
+    }
+    if (character === "\"") {
+      inString = true
+      output += character
+    } else if (character === "/" && next === "/") {
+      lineComment = true
+      i++
+    } else if (character === "/" && next === "*") {
+      blockComment = true
+      i++
+    } else output += character
+  }
+  return output
+}
+
+function stripTrailingCommas(raw) {
+  var input = String(raw || "{}")
+  var output = ""
+  var inString = false
+  var escaped = false
+  for (var i = 0; i < input.length; i++) {
+    var character = input.charAt(i)
+    if (inString) {
+      output += character
+      if (escaped) escaped = false
+      else if (character === "\\") escaped = true
+      else if (character === "\"") inString = false
+      continue
+    }
+    if (character === "\"") {
+      inString = true
+      output += character
+      continue
+    }
+    if (character === ",") {
+      var next = i + 1
+      while (/\s/.test(input.charAt(next))) next++
+      if (input.charAt(next) === "}" || input.charAt(next) === "]") continue
+    }
+    output += character
+  }
+  return output
+}
+
 function parseConfig(raw) {
   try {
-    var parsed = JSON.parse(String(raw || "{}"))
+    var parsed = JSON.parse(stripTrailingCommas(stripJsonComments(raw)))
     var calendars = Array.isArray(parsed.calendars) ? parsed.calendars : []
     var result = []
     for (var i = 0; i < calendars.length; i++) {
