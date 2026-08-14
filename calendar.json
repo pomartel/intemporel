@@ -1,6 +1,4 @@
 {
-  // Add one object per public, read-only ICS feed.
-  // Comments and trailing commas are supported in this file.
   "calendars": [
     /*
     {
