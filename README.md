@@ -1,6 +1,6 @@
-# Intemporel — An Omarchy 4 Clock and Calendar Plugin
+# Intemporel — Omarchy Quattro Clock/Calendar Plugin
 
-Intemporel is a clock replacement and read-only calendar for
+Intemporel is a clockreplacement and read-only calendar for
 [Omarchy](https://omarchy.org/). It displays a date/time label in the bar and
 opens an event calendar from public iCalendar (ICS) feeds.
 
@@ -81,11 +81,6 @@ edit the local file:
 }
 ```
 
-`~/.config/intemporel/calendar.json` is intentionally outside the plugin tree,
-so personal calendar URLs are preserved when the plugin updates and can be
-encrypted by yadm. The example file is safe to replace or extend with your own
-read-only ICS feeds.
-
 Each calendar entry supports:
 
 - `name`: label used internally for the calendar source
@@ -103,23 +98,6 @@ Intemporel keeps the last successful response for each feed in
 `~/.cache/intemporel-calendar-cache.json`). Cached events appear immediately
 when the calendar opens; feeds then refresh in the background. The cache is
 local and may contain the same private calendar data as the configured ICS URLs.
-
-## Clock and locale behavior
-
-The bar label and calendar use the system locale by default. Set the bar
-entry's `locale` field (for example, `"locale": "fr_CA"`) to use a specific
-Qt locale. Right-click the clock to cycle label formats; the chosen format is
-written back to `shell.json`.
-
-Open the calendar with the same command used by the clock action:
-
-```bash
-omarchy-shell shell toggle intemporel
-```
-
-The event time follows the selected locale's short-time convention. 12-hour
-locales display times such as `9:30am`; 24-hour locales display times such as
-`9:30`.
 
 ### Privacy and security
 
@@ -151,12 +129,6 @@ Check that:
 2. Each feed URL is reachable without authentication.
 3. `curl -fsSL "https://example.com/calendar.ics"` can fetch the feed.
 4. The feed contains valid `VEVENT` entries.
-
-### A feed stops updating
-
-Use `r` while the panel is open to refresh immediately. Intemporel also
-refreshes feeds periodically while open. Verify that the provider has not
-revoked or changed the public feed URL.
 
 ## Updating
 
