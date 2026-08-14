@@ -40,9 +40,11 @@ Item {
   property color border: Color.popups.border
   property var borderSpec: Border.surfaceSpec("popups", "border", root.border, Math.max(1, Style.space(2)))
   readonly property var locale: root.explicitLocaleName ? Qt.locale(root.explicitLocaleName) : Qt.locale()
-  readonly property string externalConfigPath: Quickshell.env("HOME") + "/.config/intemporel/calendar.jsonc"
-  readonly property string configPath: Quickshell.env("HOME") + "/.config/omarchy/plugins/intemporel/calendar.jsonc"
-  readonly property string exampleConfigPath: Quickshell.env("HOME") + "/.config/omarchy/plugins/intemporel/calendar.jsonc.example"
+  readonly property string externalConfigPath: Quickshell.env("HOME") + "/.config/intemporel/calendars.jsonc"
+  readonly property string legacyExternalConfigPath: Quickshell.env("HOME") + "/.config/intemporel/calendar.json"
+  readonly property string configPath: Quickshell.env("HOME") + "/.config/omarchy/plugins/intemporel/calendars.jsonc"
+  readonly property string legacyConfigPath: Quickshell.env("HOME") + "/.config/omarchy/plugins/intemporel/calendar.json"
+  readonly property string exampleConfigPath: Quickshell.env("HOME") + "/.config/omarchy/plugins/intemporel/calendars.jsonc.example"
   property bool externalConfigAvailable: false
   // Omarchy hot-reloads all plugins whenever any file below the plugin directory
   // changes. Keep mutable feed data in the user cache directory so a successful
@@ -331,12 +333,48 @@ Item {
     }
   }
 
-  // The installer only clones plugin files, so make the editable configuration
-  // from the shipped template when the plugin first loads.
+  // Migrate the former .json paths, then make the editable configuration from
+  // the shipped template when the plugin first loads.
+  Process {
+    id: externalConfigMigrationCheckProcess
+    command: ["test", "-e", root.legacyExternalConfigPath]
+    running: true
+    onExited: function(exitCode) {
+      if (exitCode === 0) externalConfigMigrationProcess.running = true
+      else configMigrationCheckProcess.running = true
+    }
+  }
+
+  Process {
+    id: externalConfigMigrationProcess
+    command: ["mv", "-n", "--", root.legacyExternalConfigPath, root.externalConfigPath]
+    onExited: function(exitCode) {
+      if (exitCode === 0) externalConfigFile.reload()
+      configMigrationCheckProcess.running = true
+    }
+  }
+
+  Process {
+    id: configMigrationCheckProcess
+    command: ["test", "-e", root.legacyConfigPath]
+    onExited: function(exitCode) {
+      if (exitCode === 0) configMigrationProcess.running = true
+      else configSeedCheckProcess.running = true
+    }
+  }
+
+  Process {
+    id: configMigrationProcess
+    command: ["mv", "-n", "--", root.legacyConfigPath, root.configPath]
+    onExited: function(exitCode) {
+      if (exitCode === 0) configFile.reload()
+      configSeedCheckProcess.running = true
+    }
+  }
+
   Process {
     id: configSeedCheckProcess
     command: ["test", "-e", root.exampleConfigPath]
-    running: true
     onExited: function(exitCode) {
       if (exitCode === 0) configSeedProcess.running = true
     }

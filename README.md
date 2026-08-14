@@ -62,10 +62,10 @@ omarchy-shell shell toggle intemporel
 
 ## Configuration
 
-Edit `calendar.jsonc` in the plugin directory to configure your calendars:
+Edit `calendars.jsonc` in the plugin directory to configure your calendars:
 
 ```text
-~/.config/omarchy/plugins/intemporel/calendar.jsonc
+~/.config/omarchy/plugins/intemporel/calendars.jsonc
 ```
 
 ```json
@@ -126,7 +126,7 @@ delete calendar data.
 
 Check that:
 
-1. `calendar.jsonc` is valid JSONC.
+1. `calendars.jsonc` is valid JSONC.
 2. Each feed URL is reachable without authentication.
 3. `curl -fsSL "https://example.com/calendar.ics"` can fetch the feed.
 4. The feed contains valid `VEVENT` entries.
@@ -163,7 +163,7 @@ The plugin consists of:
 - `Model.js`: clock label formatting helpers
 - `Calendar.qml`: calendar UI, keyboard handling, and shell integration
 - `CalendarModel.js`: ICS parsing, recurrence expansion, and formatting
-- `calendar.jsonc`: starter calendar configuration
+- `calendars.jsonc`: starter calendar configuration
 - `manifest.json`: Omarchy plugin metadata and entry point
 
 Validate the plugin before submitting changes:
