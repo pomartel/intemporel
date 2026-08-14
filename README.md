@@ -93,14 +93,10 @@ Each calendar entry supports:
 - `excludeDeclined`: optional; defaults to `true`, hiding invitations you
   declined. Set it to `false` to show them.
 
-The file uses JSONC: comments and trailing commas are allowed. It is watched
-for changes and reloaded automatically.
-
 ### Feed cache
 
 Intemporel keeps the last successful response for each feed in
-`$XDG_CACHE_HOME/intemporel-calendar-cache.json` (or
-`~/.cache/intemporel-calendar-cache.json`). Cached events appear immediately
+`~/.cache/intemporel-calendar-cache.json`. Cached events appear immediately
 when the calendar opens; feeds then refresh in the background. The cache is
 local and may contain the same private calendar data as the configured ICS URLs.
 
@@ -156,7 +152,7 @@ The command disables and unloads the plugin, including its in-plugin calendar
 configuration. It preserves the feed cache. To discard cached events too, run:
 
 ```bash
-rm -f "${XDG_CACHE_HOME:-$HOME/.cache}/intemporel-calendar-cache.json"
+rm -f "~/.cache/intemporel-calendar-cache.json"
 ```
 
 ## Development
