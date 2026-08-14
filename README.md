@@ -137,8 +137,27 @@ omarchy plugin update intemporel
 
 ## Removal
 
-First remove the `intemporel` entry from `~/.config/omarchy/shell.json` and
-restore the clock widget you want to use. Then remove the plugin:
+Before removing the plugin, replace the `intemporel` center entry in
+`~/.config/omarchy/shell.json` with Omarchy's default clock (keep any other
+widgets in `center`):
+
+```json
+{
+  "bar": {
+    "centerAnchor": "omarchy.clock",
+    "layout": {
+      "center": [{
+        "id": "omarchy.clock",
+        "format": "dddd HH:mm",
+        "formatAlt": "d MMMM 'W'ww yyyy",
+        "verticalFormat": "HH\n—\nmm"
+      }]
+    }
+  }
+}
+```
+
+Then remove Intemporel:
 
 ```bash
 omarchy plugin remove intemporel
