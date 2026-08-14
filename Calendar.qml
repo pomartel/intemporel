@@ -42,11 +42,7 @@ Item {
   property var borderSpec: Border.surfaceSpec("popups", "border", root.border, Math.max(1, Style.space(2)))
   readonly property var locale: root.explicitLocaleName ? Qt.locale(root.explicitLocaleName) : Qt.locale()
   readonly property string externalConfigPath: Quickshell.env("HOME") + "/.config/intemporel/calendars.jsonc"
-  readonly property string previousExternalConfigPath: Quickshell.env("HOME") + "/.config/intemporel/calendar.jsonc"
-  readonly property string legacyExternalConfigPath: Quickshell.env("HOME") + "/.config/intemporel/calendar.json"
   readonly property string configPath: Quickshell.env("HOME") + "/.config/omarchy/plugins/intemporel/calendars.jsonc"
-  readonly property string previousConfigPath: Quickshell.env("HOME") + "/.config/omarchy/plugins/intemporel/calendar.jsonc"
-  readonly property string legacyConfigPath: Quickshell.env("HOME") + "/.config/omarchy/plugins/intemporel/calendar.json"
   readonly property string exampleConfigPath: Quickshell.env("HOME") + "/.config/omarchy/plugins/intemporel/calendars.jsonc.example"
   property bool externalConfigAvailable: false
   // Omarchy hot-reloads all plugins whenever any file below the plugin directory
@@ -348,30 +344,12 @@ Item {
     }
   }
 
-  // Migrate former configuration names, then copy the shipped template on a
-  // fresh installation without making the plugin checkout dirty.
-  Process {
-    id: externalConfigMigrationProcess
-    command: ["sh", "-c", "target=$1; shift; [ -e \"$target\" ] && exit 0; for source; do [ -e \"$source\" ] || continue; mv -- \"$source\" \"$target\"; exit $?; done", "sh", root.externalConfigPath, root.previousExternalConfigPath, root.legacyExternalConfigPath]
-    running: true
-    onExited: function(exitCode) {
-      if (exitCode === 0) externalConfigFile.reload()
-      configMigrationProcess.running = true
-    }
-  }
-
-  Process {
-    id: configMigrationProcess
-    command: ["sh", "-c", "target=$1; shift; [ -e \"$target\" ] && exit 0; for source; do [ -e \"$source\" ] || continue; mv -- \"$source\" \"$target\"; exit $?; done", "sh", root.configPath, root.previousConfigPath, root.legacyConfigPath]
-    onExited: function(exitCode) {
-      if (exitCode === 0) configFile.reload()
-      configSeedCheckProcess.running = true
-    }
-  }
-
+  // Make the editable configuration from the shipped template on a fresh
+  // installation without making the plugin checkout dirty.
   Process {
     id: configSeedCheckProcess
     command: ["test", "-e", root.exampleConfigPath]
+    running: true
     onExited: function(exitCode) {
       if (exitCode === 0) configSeedProcess.running = true
     }
