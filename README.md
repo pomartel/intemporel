@@ -118,6 +118,7 @@ delete calendar data.
 | `Ctrl` + arrow keys | Change month |
 | `Enter` or `Home` | Go to today |
 | `r` | Refresh calendar feeds |
+| `?` | Toggle keyboard help |
 | `Esc` | Close the panel |
 
 ## Troubleshooting

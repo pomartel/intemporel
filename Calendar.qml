@@ -30,6 +30,7 @@ Item {
   property int preferredDay: selectedDate.getDate()
   property string statusText: ""
   property string configError: ""
+  property bool keyboardHelpVisible: false
   property int fetchIndex: 0
   property string fetchRaw: ""
   property bool fetchInProgress: false
@@ -83,6 +84,7 @@ Item {
   function open(payloadJson) {
     root.requestedScreenName = ""
     root.explicitLocaleName = ""
+    root.keyboardHelpVisible = false
     try {
       var payload = JSON.parse(String(payloadJson || "{}"))
       if (payload && payload.screen) root.requestedScreenName = String(payload.screen)
@@ -580,19 +582,27 @@ Item {
           }
         }
 
-        PanelSeparator { foreground: root.foreground }
-
-        Text {
-          text: "󰁁 day   Ctrl󰁁 month   ⏎ today   r refresh   Esc close"
-          anchors.left: parent.left
-          anchors.right: parent.right
-          color: Util.alpha(root.foreground, 0.55)
-          font.family: root.fontFamily
-          font.pixelSize: Style.font.caption
-          fontSizeMode: Text.HorizontalFit
-          minimumPixelSize: Style.space(8)
-          horizontalAlignment: Text.AlignHCenter
-          wrapMode: Text.NoWrap
+        Loader {
+          active: root.keyboardHelpVisible
+          width: parent.width
+          sourceComponent: Component {
+            Column {
+              width: parent.width
+              spacing: Style.space(4)
+              PanelSeparator { width: parent.width; foreground: root.foreground }
+              Text {
+                width: parent.width
+                text: "󰁁 day   Ctrl󰁁 month   ⏎ today   r refresh   Esc close   ? hide help"
+                color: Util.alpha(root.foreground, 0.55)
+                font.family: root.fontFamily
+                font.pixelSize: Style.font.caption
+                fontSizeMode: Text.HorizontalFit
+                minimumPixelSize: Style.space(8)
+                horizontalAlignment: Text.AlignHCenter
+                wrapMode: Text.NoWrap
+              }
+            }
+          }
         }
       }
     }
@@ -607,6 +617,7 @@ Item {
         if (event.key === Qt.Key_Escape) { root.close(); event.accepted = true; return }
         if (event.key === Qt.Key_Home) { root.goToday(); event.accepted = true; return }
         if (event.key === Qt.Key_Return || event.key === Qt.Key_Enter) { root.goToday(); event.accepted = true; return }
+        if (event.text === "?") { root.keyboardHelpVisible = !root.keyboardHelpVisible; event.accepted = true; return }
         if (event.text === "r" || event.text === "R") { root.refresh(); event.accepted = true; return }
 
         var ctrl = (event.modifiers & Qt.ControlModifier) !== 0
