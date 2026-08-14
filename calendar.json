@@ -1,16 +1,14 @@
 {
   "calendars": [
-    /*
-    {
-      "name": "Work",
-      "url": "https://example.com/work.ics",
-      "color": "#4285F4"
-    },
-    {
-      "name": "Family",
-      "url": "https://example.com/family.ics",
-      "color": "#F59E0B"
-    }
-    */
+    // {
+    //   "name": "Work",
+    //   "url": "https://example.com/work.ics",
+    //   "color": "#4285F4"
+    // },
+    // {
+    //   "name": "Family",
+    //   "url": "https://example.com/family.ics",
+    //   "color": "#F59E0B"
+    // }
   ]
 }
