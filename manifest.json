@@ -4,7 +4,7 @@
   "name": "Intemporel",
   "version": "1.0.0",
   "author": "Pierre Olivier Martel",
-  "description": "Date/time label with an Intemporel calendar popup",
+  "description": "Replaces the default Clock/Calendar with added read-only ical support",
   "kinds": [
     "bar-widget"
   ],
@@ -13,7 +13,7 @@
   },
   "barWidget": {
     "displayName": "Intemporel",
-    "description": "Date/time label with an Intemporel calendar popup",
+    "description": "Replaces the default Clock/Calendar with added read-only ical support",
     "category": "Time",
     "allowMultiple": false
   }
