@@ -18,6 +18,8 @@ BarWidget {
   readonly property string configuredAltFormat: root.vertical
     ? setting("verticalFormatAlt", "dd\nMMM\n'W'ww\n''yy")
     : setting("formatAlt", "d MMMM 'W'ww yyyy")
+  readonly property string configuredLocaleName: String(setting("locale", "") || "")
+  readonly property var displayLocale: configuredLocaleName ? Qt.locale(configuredLocaleName) : Qt.locale()
   readonly property var formatRing: Model.clockFormatRing(configuredFormat, configuredAltFormat, Model.clockFormats(root.vertical))
   readonly property string activeFormat: configuredFormat
   readonly property string displayText: formatted(displayDate)
@@ -27,7 +29,7 @@ BarWidget {
   function panelPayload() {
     var screenName = button.QsWindow && button.QsWindow.window && button.QsWindow.window.screen
       ? button.QsWindow.window.screen.name : ""
-    return JSON.stringify({ screen: screenName, locale: setting("locale", "") })
+    return JSON.stringify({ screen: screenName, locale: configuredLocaleName })
   }
 
   function refresh() {
@@ -48,7 +50,7 @@ BarWidget {
   }
 
   function formatted(date) {
-    return Qt.locale(setting("locale", "")).toString(date,
+    return displayLocale.toString(date,
       activeFormat.replace(/ww/g, Model.isoWeekLiteral(date.getFullYear(), date.getMonth(), date.getDate())))
   }
 
