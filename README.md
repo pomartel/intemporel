@@ -62,7 +62,11 @@ omarchy-shell shell toggle intemporel
 
 ## Configuration
 
-Configure calendars using this JSONC structure:
+Edit `calendar.json` in the plugin directory to configure your calendars:
+
+```text
+~/.config/omarchy/plugins/intemporel/calendar.json
+```
 
 ```json
 {
@@ -122,7 +126,7 @@ delete calendar data.
 
 Check that:
 
-1. The configuration is valid JSONC.
+1. `calendar.json` is valid JSONC.
 2. Each feed URL is reachable without authentication.
 3. `curl -fsSL "https://example.com/calendar.ics"` can fetch the feed.
 4. The feed contains valid `VEVENT` entries.
@@ -144,8 +148,8 @@ restore the clock widget you want to use. Then remove the plugin:
 omarchy plugin remove intemporel
 ```
 
-The command disables and unloads the plugin. It preserves the feed cache. To
-discard cached events too, run:
+The command disables and unloads the plugin, including its in-plugin calendar
+configuration. It preserves the feed cache. To discard cached events too, run:
 
 ```bash
 rm -f "~/.cache/intemporel-calendar-cache.json"
@@ -159,6 +163,7 @@ The plugin consists of:
 - `Model.js`: clock label formatting helpers
 - `Calendar.qml`: calendar UI, keyboard handling, and shell integration
 - `CalendarModel.js`: ICS parsing, recurrence expansion, and formatting
+- `calendar.json`: starter calendar configuration
 - `manifest.json`: Omarchy plugin metadata and entry point
 
 Validate the plugin before submitting changes:
