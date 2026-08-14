@@ -4,7 +4,7 @@ Intemporel is a clock replacement and read-only calendar for
 [Omarchy](https://omarchy.org/). It displays a date/time label in the bar and
 opens an event calendar from public iCalendar (ICS) feeds.
 
-![Intemporel calendar showing events](screenshot.png)
+<img src="screenshot.png" alt="Intemporel calendar showing events" width="344">
 
 ## Features
 
