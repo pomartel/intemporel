@@ -62,8 +62,9 @@ omarchy-shell shell toggle intemporel
 
 ## Configuration
 
-Copy `calendar.json.example` to `~/.config/intemporel/calendar.json`, then
-edit the local file:
+When Intemporel first loads, it copies `calendar.json.example` to
+`~/.config/intemporel/calendar.json` without replacing an existing file. Edit
+the local file to configure your calendars:
 
 ```json
 {

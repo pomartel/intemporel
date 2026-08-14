@@ -42,7 +42,9 @@ Item {
   readonly property var locale: root.explicitLocaleName ? Qt.locale(root.explicitLocaleName) : Qt.locale()
   // Prefer private configuration outside the watched, updatable plugin tree.
   // Keep the old in-plugin path as a compatibility fallback for existing setups.
+  readonly property string configDirectory: Quickshell.env("HOME") + "/.config/intemporel"
   readonly property string configPath: Quickshell.env("HOME") + "/.config/intemporel/calendar.json"
+  readonly property string exampleConfigPath: Quickshell.env("HOME") + "/.config/omarchy/plugins/intemporel/calendar.json.example"
   readonly property string legacyConfigPath: Quickshell.env("HOME") + "/.config/omarchy/plugins/intemporel/calendar.json"
   property bool externalConfigAvailable: false
   // Omarchy hot-reloads all plugins whenever any file below the plugin directory
@@ -329,6 +331,26 @@ Item {
         root.fetchIndex++
         root.fetchNext()
       }
+    }
+  }
+
+  // Omarchy's installer only clones plugin files. Seed the external
+  // configuration after the plugin first loads, without replacing an existing
+  // user configuration.
+  Process {
+    id: configDirectoryProcess
+    command: ["mkdir", "-p", root.configDirectory]
+    running: true
+    onExited: function(exitCode) {
+      if (exitCode === 0) configSeedProcess.running = true
+    }
+  }
+
+  Process {
+    id: configSeedProcess
+    command: ["cp", "-n", "--", root.exampleConfigPath, root.configPath]
+    onExited: function(exitCode) {
+      if (exitCode === 0) externalConfigFile.reload()
     }
   }
 
