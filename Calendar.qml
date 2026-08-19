@@ -70,6 +70,25 @@ Item {
   property var dayCells: []
   readonly property var weekdayNames: buildWeekdayNames()
   readonly property var targetScreen: findTargetScreen()
+  readonly property int maxVisibleDots: 5
+
+  function buildEventDots(dateKey) {
+    var events = root.monthEvents[dateKey] || []
+    var calendarColors = []
+    var colorMap = {}
+    for (var i = 0; i < events.length; i++) {
+      var c = events[i].color || Color.accent
+      if (!colorMap[c]) { colorMap[c] = true; calendarColors.push(c) }
+    }
+    var dots = []
+    for (var j = 0; j < calendarColors.length; j++) {
+      var color = calendarColors[j]
+      for (var k = 0; k < events.length; k++) {
+        if ((events[k].color || Color.accent) === color) dots.push(color)
+      }
+    }
+    return dots
+  }
 
   function capitalize(value) {
     var text = String(value || "")
@@ -175,6 +194,7 @@ Item {
     for (var i = 0; i < 42; i++) {
       var date = new Date(start.getFullYear(), start.getMonth(), start.getDate() + i)
       var key = Model.dateKey(date)
+      var eventDots = root.buildEventDots(key)
       cells.push({
         date: date,
         key: key,
@@ -182,7 +202,9 @@ Item {
         inMonth: date.getMonth() === root.viewMonth && date.getFullYear() === root.viewYear,
         today: key === Model.dateKey(new Date()),
         selected: key === root.selectedKey,
-        hasEvents: (root.monthEvents[key] || []).length > 0
+        eventCount: (root.monthEvents[key] || []).length,
+        eventDots: eventDots.slice(0, root.maxVisibleDots),
+        overflowCount: Math.max(0, (root.monthEvents[key] || []).length - root.maxVisibleDots)
       })
     }
     return cells
@@ -510,15 +532,30 @@ Item {
                   font.bold: modelData.today || modelData.selected
                 }
 
-                Rectangle {
-                  visible: modelData.hasEvents
-                  width: Style.space(5)
-                  height: width
-                  radius: width / 2
-                  color: modelData.selected ? root.background : Color.accent
+                Row {
+                  visible: modelData.eventCount > 0
+                  spacing: Style.space(1)
                   anchors.horizontalCenter: parent.horizontalCenter
                   anchors.bottom: parent.bottom
                   anchors.bottomMargin: Style.space(4)
+                  Repeater {
+                    model: modelData.eventDots
+                    Rectangle {
+                      required property string modelData
+                      width: Style.space(4)
+                      height: width
+                      radius: width / 2
+                      color: modelData
+                    }
+                  }
+                  Text {
+                    visible: modelData.overflowCount > 0
+                    text: "+" + modelData.overflowCount
+                    color: modelData.selected ? Util.alpha(root.background, 0.85) : Util.alpha(root.foreground, 0.55)
+                    font.family: root.fontFamily
+                    font.pixelSize: Style.space(7)
+                    anchors.verticalCenter: parent.verticalCenter
+                  }
                 }
 
                 MouseArea {
