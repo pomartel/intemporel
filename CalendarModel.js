@@ -188,21 +188,29 @@ function parseIcs(raw, calendar) {
     var prop = propertyLine(lines[i])
     if (!prop) continue
     if (prop.name === "BEGIN" && prop.value.toUpperCase() === "VEVENT") {
-      current = { calendar: calendar.name, color: calendar.color, summary: "(untitled)", location: "", declined: false }
+      current = { calendar: calendar.name, color: calendar.color, summary: "(untitled)", location: "", declined: false, exdates: [] }
       continue
     }
     if (prop.name === "END" && prop.value.toUpperCase() === "VEVENT") {
-      if (current && current.start && !(calendar.excludeDeclined && current.declined)) events.push(current)
+      if (current && (current.start || current.recurrenceId) && !(calendar.excludeDeclined && current.declined)) events.push(current)
       current = null
       continue
     }
     if (!current) continue
-    if (prop.name === "SUMMARY") current.summary = unescape(prop.value)
+    if (prop.name === "UID") current.uid = prop.value
+    else if (prop.name === "SUMMARY") current.summary = unescape(prop.value)
     else if (prop.name === "LOCATION") current.location = unescape(prop.value)
     else if (prop.name === "ATTENDEE" && String(prop.params.PARTSTAT || "").toUpperCase() === "DECLINED") current.declined = true
     else if (prop.name === "DTSTART") current.start = parseDate(prop.value, prop.params)
     else if (prop.name === "DTEND") current.end = parseDate(prop.value, prop.params)
     else if (prop.name === "RRULE") current.rule = parseRule(prop.value)
+    else if (prop.name === "RECURRENCE-ID") current.recurrenceId = parseDate(prop.value, prop.params).date
+    else if (prop.name === "EXDATE") {
+      var excluded = String(prop.value || "").split(",")
+      for (var e = 0; e < excluded.length; e++) {
+        if (excluded[e]) current.exdates.push(parseDate(excluded[e], prop.params).date)
+      }
+    } else if (prop.name === "STATUS") current.cancelled = String(prop.value).toUpperCase() === "CANCELLED"
   }
   return events
 }
@@ -265,14 +273,25 @@ function fastForward(cursor, frequency, interval, threshold) {
   }
 }
 
-function expandEvent(target, event, year, month) {
+function excludedOccurrence(event, date, exceptions) {
+  for (var i = 0; i < (event.exdates || []).length; i++) {
+    if (event.exdates[i].getTime() === date.getTime()) return true
+  }
+  return !!(exceptions && Object.prototype.hasOwnProperty.call(exceptions, date.getTime()))
+}
+
+function addExpandedOccurrence(target, event, date, exceptions) {
+  if (!excludedOccurrence(event, date, exceptions)) addOccurrence(target, event, date)
+}
+
+function expandEvent(target, event, year, month, exceptions) {
   if (!event.rule) {
-    if (occurrenceOverlapsMonth(event, event.start.date, year, month)) addOccurrence(target, event, event.start.date)
+    if (event.start && occurrenceOverlapsMonth(event, event.start.date, year, month)) addExpandedOccurrence(target, event, event.start.date, exceptions)
     return
   }
   var freq = String(event.rule.FREQ || "").toUpperCase()
   if (["DAILY", "WEEKLY", "MONTHLY", "YEARLY"].indexOf(freq) < 0) {
-    if (occurrenceOverlapsMonth(event, event.start.date, year, month)) addOccurrence(target, event, event.start.date)
+    if (occurrenceOverlapsMonth(event, event.start.date, year, month)) addExpandedOccurrence(target, event, event.start.date, exceptions)
     return
   }
   var interval = Math.max(1, Number(event.rule.INTERVAL || 1))
@@ -284,7 +303,7 @@ function expandEvent(target, event, year, month) {
     if (count && n >= count) break
     if (until && cursor > until) break
     if (cursor > monthBounds(year, month).end) break
-    if (occurrenceOverlapsMonth(event, cursor, year, month)) addOccurrence(target, event, cursor)
+    if (occurrenceOverlapsMonth(event, cursor, year, month)) addExpandedOccurrence(target, event, cursor, exceptions)
     if (freq === "DAILY") cursor.setDate(cursor.getDate() + interval)
     else if (freq === "WEEKLY") cursor.setDate(cursor.getDate() + 7 * interval)
     else if (freq === "MONTHLY") cursor.setMonth(cursor.getMonth() + interval)
@@ -294,7 +313,29 @@ function expandEvent(target, event, year, month) {
 
 function eventsForMonth(events, year, month) {
   var result = ({})
-  for (var i = 0; i < events.length; i++) expandEvent(result, events[i], year, month)
+  var groups = ({})
+  for (var i = 0; i < events.length; i++) {
+    var event = events[i]
+    var groupKey = event.uid || "event-" + i
+    if (!groups[groupKey]) groups[groupKey] = { master: null, exceptions: [] }
+    if (event.recurrenceId) groups[groupKey].exceptions.push(event)
+    else if (!groups[groupKey].master) groups[groupKey].master = event
+  }
+  for (var groupKey in groups) {
+    var group = groups[groupKey]
+    var exceptions = ({})
+    for (var e = 0; e < group.exceptions.length; e++) {
+      var exception = group.exceptions[e]
+      exceptions[exception.recurrenceId.getTime()] = true
+    }
+    if (group.master) expandEvent(result, group.master, year, month, exceptions)
+    for (var x = 0; x < group.exceptions.length; x++) {
+      var replacement = group.exceptions[x]
+      if (!replacement.cancelled && replacement.start && occurrenceOverlapsMonth(replacement, replacement.start.date, year, month)) {
+        addOccurrence(result, replacement, replacement.start.date)
+      }
+    }
+  }
   for (var key in result) {
     result[key].sort(function(a, b) { return a.start - b.start || a.summary.localeCompare(b.summary) })
   }
