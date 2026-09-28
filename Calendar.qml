@@ -31,6 +31,8 @@ Item {
   property int preferredDay: selectedDate.getDate()
   property string statusText: ""
   property string configError: ""
+  property var loadedConfigText: null
+  property string loadedConfigLocale: ""
   property bool keyboardHelpVisible: false
   property int fetchIndex: 0
   property string fetchRaw: ""
@@ -267,6 +269,12 @@ Item {
   }
 
   function loadCalendarConfig(configText) {
+    configText = String(configText || "")
+    // File watchers also report permission changes (for example yadm's
+    // automatic chmod). Avoid reparsing every cached feed on those events.
+    if (configText === root.loadedConfigText && root.locale.name === root.loadedConfigLocale) return
+    root.loadedConfigText = configText
+    root.loadedConfigLocale = root.locale.name
     var parsed = Model.parseConfigResult(configText, root.t("calendar"))
     root.configError = parsed.error
     root.calendars = parsed.calendars
@@ -278,6 +286,8 @@ Item {
   }
 
   function clearCalendarConfig() {
+    root.loadedConfigText = null
+    root.loadedConfigLocale = ""
     root.configError = ""
     root.calendars = []
     root.eventsByUrl = ({})
