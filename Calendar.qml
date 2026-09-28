@@ -8,6 +8,7 @@ import qs.Ui
 import qs.Commons
 import "CalendarModel.js" as Model
 import "Translations.js" as Translations
+import "service" as Service
 
 Item {
   id: root
@@ -20,23 +21,15 @@ Item {
   property var anchorItem: null
   property var hostWidget: null
   property bool opened: false
-  property var calendars: []
-  property var events: []
-  property var eventsByUrl: ({})
-  property var cachedFeeds: ({})
-  property bool cacheReady: false
-  property var monthEvents: ({})
+  readonly property var calendars: Service.CalendarStore.calendars
+  property string windowKey: ""
+  readonly property var monthEvents: Service.CalendarStore.windows[windowKey] || ({})
   property var selectedDate: new Date()
   property var viewDate: new Date()
   property int preferredDay: selectedDate.getDate()
-  property string statusText: ""
-  property string configError: ""
-  property var loadedConfigText: null
-  property string loadedConfigLocale: ""
+  readonly property string statusText: configError ? root.t("invalidConfiguration") : root.t(Service.CalendarStore.state)
+  readonly property string configError: Service.CalendarStore.configError
   property bool keyboardHelpVisible: false
-  property int fetchIndex: 0
-  property string fetchRaw: ""
-  property bool fetchInProgress: false
   property string requestedScreenName: ""
   property string explicitLocaleName: ""
   property string fontFamily: Style.font.menuFamily
@@ -45,15 +38,6 @@ Item {
   property color border: Color.popups.border
   property var borderSpec: Border.surfaceSpec("popups", "border", root.border, Math.max(1, Style.space(2)))
   readonly property var locale: root.explicitLocaleName ? Qt.locale(root.explicitLocaleName) : Qt.locale()
-  readonly property string externalConfigPath: Quickshell.env("HOME") + "/.config/intemporel/calendars.jsonc"
-  readonly property string configPath: Quickshell.env("HOME") + "/.config/omarchy/plugins/intemporel/calendars.jsonc"
-  readonly property string exampleConfigPath: Quickshell.env("HOME") + "/.config/omarchy/plugins/intemporel/calendars.jsonc.example"
-  property bool externalConfigAvailable: false
-  // Omarchy hot-reloads all plugins whenever any file below the plugin directory
-  // changes. Keep mutable feed data in the user cache directory so a successful
-  // refresh does not unload and recreate the whole shell plugin set.
-  readonly property string cacheDirectory: Quickshell.env("XDG_CACHE_HOME") || (Quickshell.env("HOME") + "/.cache")
-  readonly property string cachePath: root.cacheDirectory + "/intemporel-calendar-cache.json"
   // Match Omarchy's clock KeyboardPanel: its calendar is centered on the
   // bar edge, opening inward from top, bottom, left, or right.
   readonly property string barPosition: root.bar && root.bar.position ? root.bar.position : "top"
@@ -62,12 +46,7 @@ Item {
   readonly property int viewYear: viewDate.getFullYear()
   readonly property int viewMonth: viewDate.getMonth()
   readonly property string selectedKey: Model.dateKey(selectedDate)
-  readonly property var selectedEvents: {
-    var list = root.monthEvents[root.selectedKey] || []
-    var formatted = []
-    for (var i = 0; i < list.length; i++) formatted.push(Model.formatEvent(list[i], root.locale))
-    return formatted
-  }
+  readonly property var selectedEvents: root.monthEvents[root.selectedKey] || []
   readonly property string monthTitle: root.capitalize(root.locale.toString(root.viewDate, root.t("monthYearFormat"))).toUpperCase()
   property var dayCells: []
   readonly property var weekdayNames: buildWeekdayNames()
@@ -100,7 +79,7 @@ Item {
     root.selectedDate = new Date()
     root.preferredDay = root.selectedDate.getDate()
     root.viewDate = new Date()
-    root.loadCachedFeeds()
+    root.rebuildMonth()
     root.refresh()
     Qt.callLater(function() { keyCatcher.forceActiveFocus() })
   }
@@ -110,7 +89,7 @@ Item {
 
   function openConfigEditor() {
     root.close()
-    configEditorProcess.command = ["omarchy-launch-editor", root.externalConfigAvailable ? root.externalConfigPath : root.configPath]
+    configEditorProcess.command = ["omarchy-launch-editor", Service.CalendarStore.externalConfigAvailable ? Service.CalendarStore.externalConfigPath : Service.CalendarStore.configPath]
     configEditorProcess.running = true
   }
 
@@ -202,177 +181,24 @@ Item {
   }
 
   function rebuildMonth() {
-    root.monthEvents = Model.eventsForMonth(root.events, root.viewYear, root.viewMonth)
+    var firstDay = Number(root.locale.firstDayOfWeek || 1) % 7
+    root.windowKey = Service.CalendarStore.requestWindow(root.viewYear, root.viewMonth, firstDay)
     root.dayCells = buildDayCells()
   }
 
-  function rebuildEvents() {
-    var combined = []
-    for (var i = 0; i < root.calendars.length; i++) {
-      var eventsForCalendar = root.eventsByUrl[root.calendars[i].url] || []
-      for (var j = 0; j < eventsForCalendar.length; j++) combined.push(eventsForCalendar[j])
-    }
-    root.events = combined
-    root.rebuildMonth()
-  }
+  function refresh() { Service.CalendarStore.refresh() }
 
-  function loadCachedFeeds() {
-    if (!root.cacheReady || !root.calendars.length) return
-    var cachedEvents = ({})
-    for (var i = 0; i < root.calendars.length; i++) {
-      var calendar = root.calendars[i]
-      var raw = root.cachedFeeds[calendar.url]
-      if (raw) cachedEvents[calendar.url] = Model.parseIcs(raw, calendar)
-    }
-    root.eventsByUrl = cachedEvents
-    root.rebuildEvents()
-    if (root.events.length && !root.fetchInProgress) root.statusText = root.t("cachedData")
-  }
+  onMonthEventsChanged: root.dayCells = buildDayCells()
+  onLocaleChanged: if (root.opened) root.rebuildMonth()
 
-  function persistCache() {
-    cacheFile.setText(Model.serializeCache(root.cachedFeeds))
-  }
-
-  function refresh() {
-    if (root.fetchInProgress) return
-    if (root.configError) {
-      root.statusText = root.t("invalidConfiguration")
-      return
-    }
-    root.fetchIndex = 0
-    root.statusText = root.calendars.length ? root.t("updating") : root.t("noCalendarsConfigured")
-    root.fetchInProgress = root.calendars.length > 0
-    if (root.fetchInProgress) root.fetchNext()
-  }
-
-  function fetchNext() {
-    if (root.fetchIndex >= root.calendars.length) {
-      root.fetchInProgress = false
-      root.rebuildMonth()
-      if (!root.statusText || root.statusText === root.t("updating")) root.statusText = root.t("updated")
-      return
-    }
-    var calendar = root.calendars[root.fetchIndex]
-    root.fetchRaw = ""
-    feedProcess.command = ["curl", "-fsSL", "--max-time", "15", calendar.url]
-    feedProcess.running = true
-  }
-
-  function parseFetchedFeed() {
-    var calendar = root.calendars[root.fetchIndex]
-    root.eventsByUrl[calendar.url] = Model.parseIcs(root.fetchRaw, calendar)
-    root.cachedFeeds[calendar.url] = root.fetchRaw
-    root.persistCache()
-    root.rebuildEvents()
-    root.fetchIndex++
-    root.fetchNext()
-  }
-
-  function loadCalendarConfig(configText) {
-    configText = String(configText || "")
-    // File watchers also report permission changes (for example yadm's
-    // automatic chmod). Avoid reparsing every cached feed on those events.
-    if (configText === root.loadedConfigText && root.locale.name === root.loadedConfigLocale) return
-    root.loadedConfigText = configText
-    root.loadedConfigLocale = root.locale.name
-    var parsed = Model.parseConfigResult(configText, root.t("calendar"))
-    root.configError = parsed.error
-    root.calendars = parsed.calendars
-    root.eventsByUrl = ({})
-    root.events = []
-    root.rebuildMonth()
-    root.loadCachedFeeds()
-    if (root.opened) root.refresh()
-  }
-
-  function clearCalendarConfig() {
-    root.loadedConfigText = null
-    root.loadedConfigLocale = ""
-    root.configError = ""
-    root.calendars = []
-    root.eventsByUrl = ({})
-    root.events = []
-    root.rebuildMonth()
-  }
-
-  FileView {
-    id: externalConfigFile
-    path: root.externalConfigPath
-    watchChanges: true
-    printErrors: false
-    onLoaded: {
-      root.externalConfigAvailable = true
-      root.loadCalendarConfig(text())
-    }
-    onLoadFailed: {
-      root.externalConfigAvailable = false
-      configFile.reload()
-    }
-    onFileChanged: reload()
-  }
-
-  FileView {
-    id: configFile
-    path: root.configPath
-    watchChanges: true
-    printErrors: false
-    onLoaded: {
-      if (!root.externalConfigAvailable) root.loadCalendarConfig(text())
-    }
-    onLoadFailed: {
-      if (!root.externalConfigAvailable) root.clearCalendarConfig()
-    }
-    onFileChanged: reload()
-  }
-
-  FileView {
-    id: cacheFile
-    path: root.cachePath
-    watchChanges: false
-    printErrors: false
-    onLoaded: {
-      root.cachedFeeds = Model.parseCache(text())
-      root.cacheReady = true
-      root.loadCachedFeeds()
-    }
-    onLoadFailed: {
-      root.cachedFeeds = ({})
-      root.cacheReady = true
-    }
-  }
-
-  Process {
-    id: feedProcess
-    stdout: StdioCollector {
-      waitForEnd: true
-      onStreamFinished: root.fetchRaw = String(text || "")
-    }
-    onExited: function(exitCode) {
-      if (exitCode === 0 && root.fetchRaw.trim()) root.parseFetchedFeed()
-      else {
-        root.statusText = root.t("refreshFailed")
-        root.fetchIndex++
-        root.fetchNext()
+  Connections {
+    target: Service.CalendarStore
+    function onGenerationChanged() {
+      if (root.opened) {
+        root.rebuildMonth()
+        // Run after the new configuration has been sent to the worker.
+        Qt.callLater(root.refresh)
       }
-    }
-  }
-
-  // Make the editable configuration from the shipped template on a fresh
-  // installation without making the plugin checkout dirty.
-  Process {
-    id: configSeedCheckProcess
-    command: ["test", "-e", root.exampleConfigPath]
-    running: true
-    onExited: function(exitCode) {
-      if (exitCode === 0) configSeedProcess.running = true
-    }
-  }
-
-  Process {
-    id: configSeedProcess
-    command: ["cp", "-n", "--", root.exampleConfigPath, root.configPath]
-    onExited: function(exitCode) {
-      if (exitCode === 0) configFile.reload()
     }
   }
 
@@ -417,200 +243,216 @@ Item {
 
       MouseArea { anchors.fill: parent; onClicked: {} }
 
-      Column {
-        id: contentColumn
-        anchors.left: parent.left
-        anchors.right: parent.right
-        anchors.top: parent.top
+      Flickable {
+        id: contentScroll
+        anchors.fill: parent
         anchors.topMargin: card.contentTopInset
         anchors.rightMargin: card.contentRightInset
         anchors.bottomMargin: card.contentBottomInset
         anchors.leftMargin: card.contentLeftInset
-        spacing: Style.spacing.panelGap
-
-        Item {
-          width: parent.width
-          implicitHeight: hero.implicitHeight
-
-          PanelHero {
-            id: hero
-            anchors.fill: parent
-            title: root.t("calendar")
-            meta: root.statusText
-            fontFamily: root.fontFamily
-
-            iconComponent: Component {
-              Text {
-                text: "󰃭"
-                color: root.foreground
-                font.family: root.fontFamily
-                font.pixelSize: Style.font.display
-              }
-            }
-          }
-
-          MouseArea {
-            anchors.fill: parent
-            visible: root.statusText === root.t("noCalendarsConfigured")
-                  || root.statusText === root.t("updating")
-                  || root.statusText === root.t("updated")
-                  || root.configError
-            cursorShape: Qt.PointingHandCursor
-            onClicked: root.openConfigEditor()
-          }
-        }
-
-        PanelSeparator { foreground: root.foreground }
-
-        Text {
-          text: root.monthTitle
-          color: root.foreground
-          font.family: root.fontFamily
-          font.pixelSize: Style.font.body
-          font.bold: true
-        }
+        contentWidth: width
+        contentHeight: contentColumn.implicitHeight
+        clip: true
+        boundsBehavior: Flickable.StopAtBounds
+        ScrollBar.vertical: ScrollBar { policy: ScrollBar.AsNeeded }
 
         Column {
-          width: parent.width
-          spacing: Style.space(1)
+          id: contentColumn
+          width: contentScroll.width
+          spacing: Style.spacing.panelGap
 
-          Grid {
-            id: weekdayGrid
+          Item {
             width: parent.width
-            columns: 7
-            spacing: Style.space(2)
-            Repeater {
-              model: root.weekdayNames
-              delegate: Text {
-                required property string modelData
-                width: (weekdayGrid.width - Style.space(12)) / 7
-                height: Style.space(22)
-                text: modelData.substring(0, 2)
-                color: Color.accent
-                font.family: root.fontFamily
-                font.pixelSize: Style.font.body
-                font.bold: true
-                horizontalAlignment: Text.AlignHCenter
-              }
-            }
-          }
+            implicitHeight: hero.implicitHeight
 
-          Grid {
-            id: dayGrid
-            width: parent.width
-            columns: 7
-            rows: 6
-            spacing: Style.space(2)
-            Repeater {
-              model: root.dayCells
-              delegate: Rectangle {
-                required property var modelData
-                width: (dayGrid.width - Style.space(12)) / 7
-                height: Style.space(36)
-                radius: Style.cornerRadius / 2
-                color: modelData.selected ? Color.accent : (modelData.today ? Util.alpha(Color.accent, 0.22) : "transparent")
-                opacity: modelData.inMonth ? 1 : 0.35
+            PanelHero {
+              id: hero
+              anchors.fill: parent
+              title: root.t("calendar")
+              meta: root.statusText
+              fontFamily: root.fontFamily
 
+              iconComponent: Component {
                 Text {
-                  anchors.centerIn: parent
-                  text: modelData.day
-                  color: modelData.selected ? root.background : root.foreground
+                  text: "󰃭"
+                  color: root.foreground
                   font.family: root.fontFamily
-                  font.pixelSize: Style.font.body
-                  font.bold: modelData.today || modelData.selected
-                }
-
-                Rectangle {
-                  visible: modelData.hasEvents
-                  width: Style.space(5)
-                  height: width
-                  radius: width / 2
-                  color: modelData.selected ? root.background : Color.accent
-                  anchors.horizontalCenter: parent.horizontalCenter
-                  anchors.bottom: parent.bottom
-                  anchors.bottomMargin: Style.space(4)
-                }
-
-                MouseArea {
-                  anchors.fill: parent
-                  onClicked: {
-                    root.selectedDate = modelData.date
-                    root.preferredDay = modelData.date.getDate()
-                    root.viewDate = new Date(modelData.date.getFullYear(), modelData.date.getMonth(), 1)
-                    root.rebuildMonth()
-                  }
+                  font.pixelSize: Style.font.display
                 }
               }
             }
+
+            MouseArea {
+              anchors.fill: parent
+              visible: root.statusText === root.t("noCalendarsConfigured")
+                    || root.statusText === root.t("updating")
+                    || root.statusText === root.t("updated")
+                    || root.configError
+              cursorShape: Qt.PointingHandCursor
+              onClicked: root.openConfigEditor()
+            }
           }
-        }
 
-        Rectangle { width: parent.width; height: Style.spacing.hairline; color: root.foreground; opacity: 0.14 }
+          PanelSeparator { foreground: root.foreground }
 
-        Column {
-          width: parent.width
-          spacing: Style.space(4)
           Text {
-            text: root.selectedDateTitle(root.selectedDate)
+            text: root.monthTitle
             color: root.foreground
             font.family: root.fontFamily
             font.pixelSize: Style.font.body
             font.bold: true
           }
-          Text {
-            visible: root.selectedEvents.length === 0
-            text: root.t("noEvents")
-            color: Qt.darker(root.foreground, 1.5)
-            font.family: root.fontFamily
-            font.pixelSize: Style.font.caption
-          }
-          Repeater {
-            model: root.selectedEvents
-            delegate: Item {
-              required property var modelData
+
+          Column {
+            width: parent.width
+            spacing: Style.space(1)
+
+            Grid {
+              id: weekdayGrid
               width: parent.width
-              height: eventRow.implicitHeight
-              Row {
-                id: eventRow
-                anchors.fill: parent
-                spacing: Style.space(8)
-                Rectangle { width: Style.space(3); height: Style.space(30); color: modelData.color || Color.accent; radius: 2; anchors.verticalCenter: parent.verticalCenter }
-                Column {
-                  id: eventColumn
-                  width: parent.width - Style.space(12)
-                  anchors.verticalCenter: parent.verticalCenter
+              columns: 7
+              spacing: Style.space(2)
+              Repeater {
+                model: root.weekdayNames
+                delegate: Text {
+                  required property string modelData
+                  width: (weekdayGrid.width - Style.space(12)) / 7
+                  height: Style.space(22)
+                  text: modelData.substring(0, 2)
+                  color: Color.accent
+                  font.family: root.fontFamily
+                  font.pixelSize: Style.font.body
+                  font.bold: true
+                  horizontalAlignment: Text.AlignHCenter
+                }
+              }
+            }
+
+            Grid {
+              id: dayGrid
+              width: parent.width
+              columns: 7
+              rows: 6
+              spacing: Style.space(2)
+              Repeater {
+                model: root.dayCells
+                delegate: Rectangle {
+                  required property var modelData
+                  width: (dayGrid.width - Style.space(12)) / 7
+                  height: Style.space(36)
+                  radius: Style.cornerRadius / 2
+                  color: modelData.selected ? Color.accent : (modelData.today ? Util.alpha(Color.accent, 0.22) : "transparent")
+                  opacity: modelData.inMonth ? 1 : 0.35
+
                   Text {
-                    width: parent.width
-                    text: (modelData.time ? modelData.time + "  " : "") + modelData.title
-                    color: root.foreground
+                    anchors.centerIn: parent
+                    text: modelData.day
+                    color: modelData.selected ? root.background : root.foreground
                     font.family: root.fontFamily
-                    font.pixelSize: Style.font.caption
-                    elide: Text.ElideRight
+                    font.pixelSize: Style.font.body
+                    font.bold: modelData.today || modelData.selected
+                  }
+
+                  Rectangle {
+                    visible: modelData.hasEvents
+                    width: Style.space(5)
+                    height: width
+                    radius: width / 2
+                    color: modelData.selected ? root.background : Color.accent
+                    anchors.horizontalCenter: parent.horizontalCenter
+                    anchors.bottom: parent.bottom
+                    anchors.bottomMargin: Style.space(4)
+                  }
+
+                  MouseArea {
+                    anchors.fill: parent
+                    onClicked: {
+                      root.selectedDate = modelData.date
+                      root.preferredDay = modelData.date.getDate()
+                      root.viewDate = new Date(modelData.date.getFullYear(), modelData.date.getMonth(), 1)
+                      root.rebuildMonth()
+                    }
                   }
                 }
               }
             }
           }
-        }
 
-        Column {
-          visible: root.keyboardHelpVisible
-          width: parent.width
-          height: visible ? implicitHeight : 0
-          spacing: contentColumn.spacing
+          Rectangle { width: parent.width; height: Style.spacing.hairline; color: root.foreground; opacity: 0.14 }
 
-          PanelSeparator { width: parent.width; foreground: root.foreground }
-
-          Text {
+          Column {
             width: parent.width
-            text: root.t("keyboardHelp")
-            color: Util.alpha(root.foreground, 0.55)
-            font.family: root.fontFamily
-            font.pixelSize: Style.font.caption
-            fontSizeMode: Text.HorizontalFit
-            minimumPixelSize: Style.space(8)
-            horizontalAlignment: Text.AlignHCenter
-            wrapMode: Text.NoWrap
+            spacing: Style.space(4)
+            Text {
+              text: root.selectedDateTitle(root.selectedDate)
+              color: root.foreground
+              font.family: root.fontFamily
+              font.pixelSize: Style.font.body
+              font.bold: true
+            }
+            Text {
+              visible: root.selectedEvents.length === 0
+              text: root.t("noEvents")
+              color: Qt.darker(root.foreground, 1.5)
+              font.family: root.fontFamily
+              font.pixelSize: Style.font.caption
+            }
+            ListView {
+              width: parent.width
+              implicitHeight: Math.min(contentHeight, Style.space(240))
+              clip: true
+              boundsBehavior: Flickable.StopAtBounds
+              spacing: Style.space(4)
+              model: root.selectedEvents
+              ScrollBar.vertical: ScrollBar { policy: ScrollBar.AsNeeded }
+              delegate: Item {
+                required property var modelData
+                readonly property var display: Model.formatEvent(modelData, root.locale)
+                width: ListView.view.width
+                height: eventRow.implicitHeight
+                Row {
+                  id: eventRow
+                  anchors.fill: parent
+                  spacing: Style.space(8)
+                  Rectangle { width: Style.space(3); height: Style.space(30); color: modelData.color || Color.accent; radius: 2; anchors.verticalCenter: parent.verticalCenter }
+                  Column {
+                    id: eventColumn
+                    width: parent.width - Style.space(12)
+                    anchors.verticalCenter: parent.verticalCenter
+                    Text {
+                      width: parent.width
+                      textFormat: Text.PlainText
+                      text: (display.time ? display.time + "  " : "") + display.title
+                      color: root.foreground
+                      font.family: root.fontFamily
+                      font.pixelSize: Style.font.caption
+                      elide: Text.ElideRight
+                    }
+                  }
+                }
+              }
+            }
+          }
+
+          Column {
+            visible: root.keyboardHelpVisible
+            width: parent.width
+            height: visible ? implicitHeight : 0
+            spacing: contentColumn.spacing
+
+            PanelSeparator { width: parent.width; foreground: root.foreground }
+
+            Text {
+              width: parent.width
+              text: root.t("keyboardHelp")
+              color: Util.alpha(root.foreground, 0.55)
+              font.family: root.fontFamily
+              font.pixelSize: Style.font.caption
+              fontSizeMode: Text.HorizontalFit
+              minimumPixelSize: Style.space(8)
+              horizontalAlignment: Text.AlignHCenter
+              wrapMode: Text.NoWrap
+            }
           }
         }
       }
@@ -646,5 +488,5 @@ Item {
     }
   }
 
-  Component.onCompleted: root.rebuildMonth()
+  Component.onCompleted: root.dayCells = buildDayCells()
 }

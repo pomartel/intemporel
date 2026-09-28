@@ -90,11 +90,18 @@ function parseConfigResult(raw, defaultCalendarName) {
     for (var i = 0; i < calendars.length; i++) {
       var item = calendars[i]
       if (!item || !String(item.url || "").trim()) continue
+      var url = String(item.url).trim().replace(/^webcal:/i, "https:")
+      if (!/^(https?|file):\/\//i.test(url)) return { calendars: [], error: "Calendar URLs must use HTTP, HTTPS or file." }
+      if (result.some(function(calendar) { return calendar.url === url }))
+        return { calendars: [], error: "Each calendar URL must be unique." }
       result.push({
         name: String(item.name || defaultCalendarName || "Calendar"),
-        url: String(item.url).trim(),
+        url: url,
         color: String(item.color || ""),
-        excludeDeclined: item.excludeDeclined !== false
+        excludeDeclined: item.excludeDeclined !== false,
+        emails: (Array.isArray(item.emails) ? item.emails : (item.email ? [item.email] : []))
+          .map(function(email) { return String(email).trim().toLowerCase() })
+          .filter(function(email) { return email !== "" })
       })
     }
     return { calendars: result, error: "" }
@@ -107,239 +114,8 @@ function parseConfig(raw, defaultCalendarName) {
   return parseConfigResult(raw, defaultCalendarName).calendars
 }
 
-function parseCache(raw) {
-  try {
-    var parsed = JSON.parse(String(raw || "{}"))
-    var feeds = parsed && typeof parsed.feeds === "object" && parsed.feeds ? parsed.feeds : {}
-    var result = ({})
-    for (var url in feeds) {
-      if (typeof feeds[url] === "string" && feeds[url].trim()) result[url] = feeds[url]
-    }
-    return result
-  } catch (error) {
-    return ({})
-  }
-}
-
-function serializeCache(feeds) {
-  return JSON.stringify({ version: 1, feeds: feeds || ({}) }, null, 2) + "\n"
-}
-
-function unfold(raw) {
-  return String(raw || "").replace(/\r\n[ \t]/g, "").replace(/\n[ \t]/g, "").split(/\r?\n/)
-}
-
-function unescape(value) {
-  return String(value || "")
-    .replace(/\\n/gi, "\n")
-    .replace(/\\,/g, ",")
-    .replace(/\\;/g, ";")
-    .replace(/\\\\/g, "\\")
-}
-
-function propertyLine(line) {
-  var split = String(line).split(":")
-  if (split.length < 2) return null
-  var value = split.slice(1).join(":")
-  var left = split[0].split(";")
-  var params = {}
-  for (var i = 1; i < left.length; i++) {
-    var pair = left[i].split("=")
-    if (pair.length === 2) params[pair[0].toUpperCase()] = pair.slice(1).join("=")
-  }
-  return { name: left[0].toUpperCase(), params: params, value: value }
-}
-
-function parseDate(value, params) {
-  var raw = String(value || "")
-  var allDay = raw.length === 8 && raw.indexOf("T") < 0
-  if (allDay) {
-    return {
-      date: new Date(Number(raw.slice(0, 4)), Number(raw.slice(4, 6)) - 1, Number(raw.slice(6, 8))),
-      allDay: true
-    }
-  }
-  var utc = raw.charAt(raw.length - 1) === "Z"
-  if (utc) raw = raw.slice(0, -1)
-  var y = Number(raw.slice(0, 4))
-  var m = Number(raw.slice(4, 6)) - 1
-  var d = Number(raw.slice(6, 8))
-  var h = Number(raw.slice(9, 11) || 0)
-  var min = Number(raw.slice(11, 13) || 0)
-  var sec = Number(raw.slice(13, 15) || 0)
-  return { date: utc ? new Date(Date.UTC(y, m, d, h, min, sec)) : new Date(y, m, d, h, min, sec), allDay: false }
-}
-
-function parseRule(value) {
-  var rule = {}
-  var parts = String(value || "").split(";")
-  for (var i = 0; i < parts.length; i++) {
-    var pair = parts[i].split("=")
-    if (pair.length === 2) rule[pair[0].toUpperCase()] = pair[1]
-  }
-  return rule
-}
-
-function parseIcs(raw, calendar) {
-  var lines = unfold(raw)
-  var events = []
-  var current = null
-  for (var i = 0; i < lines.length; i++) {
-    var prop = propertyLine(lines[i])
-    if (!prop) continue
-    if (prop.name === "BEGIN" && prop.value.toUpperCase() === "VEVENT") {
-      current = { calendar: calendar.name, color: calendar.color, summary: "(untitled)", location: "", declined: false, exdates: [] }
-      continue
-    }
-    if (prop.name === "END" && prop.value.toUpperCase() === "VEVENT") {
-      if (current && (current.start || current.recurrenceId) && !(calendar.excludeDeclined && current.declined)) events.push(current)
-      current = null
-      continue
-    }
-    if (!current) continue
-    if (prop.name === "UID") current.uid = prop.value
-    else if (prop.name === "SUMMARY") current.summary = unescape(prop.value)
-    else if (prop.name === "LOCATION") current.location = unescape(prop.value)
-    else if (prop.name === "ATTENDEE" && String(prop.params.PARTSTAT || "").toUpperCase() === "DECLINED") current.declined = true
-    else if (prop.name === "DTSTART") current.start = parseDate(prop.value, prop.params)
-    else if (prop.name === "DTEND") current.end = parseDate(prop.value, prop.params)
-    else if (prop.name === "RRULE") current.rule = parseRule(prop.value)
-    else if (prop.name === "RECURRENCE-ID") current.recurrenceId = parseDate(prop.value, prop.params).date
-    else if (prop.name === "EXDATE") {
-      var excluded = String(prop.value || "").split(",")
-      for (var e = 0; e < excluded.length; e++) {
-        if (excluded[e]) current.exdates.push(parseDate(excluded[e], prop.params).date)
-      }
-    } else if (prop.name === "STATUS") current.cancelled = String(prop.value).toUpperCase() === "CANCELLED"
-  }
-  return events
-}
-
 function daysInMonth(year, month) {
   return new Date(year, month + 1, 0).getDate()
-}
-
-function monthBounds(year, month) {
-  return { start: new Date(year, month, 1), end: new Date(year, month, daysInMonth(year, month), 23, 59, 59) }
-}
-
-function occurrenceEnd(event, date) {
-  if (!event.end) return null
-  return new Date(date.getTime() + event.end.date.getTime() - event.start.date.getTime())
-}
-
-function addOccurrence(target, event, date) {
-  var end = occurrenceEnd(event, date)
-  var last = end ? new Date(end.getTime() - 1) : new Date(date.getTime())
-  var day = new Date(date.getFullYear(), date.getMonth(), date.getDate())
-  var lastDay = new Date(last.getFullYear(), last.getMonth(), last.getDate())
-  while (day <= lastDay) {
-    var key = dateKey(day)
-    if (!target[key]) target[key] = []
-    target[key].push({
-      calendar: event.calendar,
-      color: event.color,
-      summary: event.summary,
-      location: event.location,
-      allDay: event.start.allDay,
-      start: new Date(date.getTime()),
-      end: end ? new Date(end.getTime()) : null
-    })
-    day.setDate(day.getDate() + 1)
-  }
-}
-
-function occurrenceOverlapsMonth(event, date, year, month) {
-  var bounds = monthBounds(year, month)
-  var end = occurrenceEnd(event, date)
-  return date <= bounds.end && (!end || end > bounds.start)
-}
-
-function fastForward(cursor, frequency, interval, threshold) {
-  if (cursor >= threshold) return
-  var dayMilliseconds = 24 * 60 * 60 * 1000
-  if (frequency === "DAILY" || frequency === "WEEKLY") {
-    var stepDays = frequency === "DAILY" ? interval : interval * 7
-    var steps = Math.max(0, Math.floor((threshold.getTime() - cursor.getTime()) / dayMilliseconds / stepDays) - 1)
-    if (steps) cursor.setDate(cursor.getDate() + steps * stepDays)
-  } else if (frequency === "MONTHLY") {
-    var months = (threshold.getFullYear() - cursor.getFullYear()) * 12 + threshold.getMonth() - cursor.getMonth()
-    var monthSteps = Math.max(0, Math.floor(months / interval) - 1)
-    if (monthSteps) cursor.setMonth(cursor.getMonth() + monthSteps * interval)
-  } else if (frequency === "YEARLY") {
-    var years = threshold.getFullYear() - cursor.getFullYear()
-    var yearSteps = Math.max(0, Math.floor(years / interval) - 1)
-    if (yearSteps) cursor.setFullYear(cursor.getFullYear() + yearSteps * interval)
-  }
-}
-
-function excludedOccurrence(event, date, exceptions) {
-  for (var i = 0; i < (event.exdates || []).length; i++) {
-    if (event.exdates[i].getTime() === date.getTime()) return true
-  }
-  return !!(exceptions && Object.prototype.hasOwnProperty.call(exceptions, date.getTime()))
-}
-
-function addExpandedOccurrence(target, event, date, exceptions) {
-  if (!excludedOccurrence(event, date, exceptions)) addOccurrence(target, event, date)
-}
-
-function expandEvent(target, event, year, month, exceptions) {
-  if (!event.rule) {
-    if (event.start && occurrenceOverlapsMonth(event, event.start.date, year, month)) addExpandedOccurrence(target, event, event.start.date, exceptions)
-    return
-  }
-  var freq = String(event.rule.FREQ || "").toUpperCase()
-  if (["DAILY", "WEEKLY", "MONTHLY", "YEARLY"].indexOf(freq) < 0) {
-    if (occurrenceOverlapsMonth(event, event.start.date, year, month)) addExpandedOccurrence(target, event, event.start.date, exceptions)
-    return
-  }
-  var interval = Math.max(1, Number(event.rule.INTERVAL || 1))
-  var count = Number(event.rule.COUNT || 0)
-  var until = event.rule.UNTIL ? parseDate(event.rule.UNTIL, {}).date : null
-  var cursor = new Date(event.start.date.getTime())
-  if (!count) fastForward(cursor, freq, interval, monthBounds(year, month).start)
-  for (var n = 0; n < 100000; n++) {
-    if (count && n >= count) break
-    if (until && cursor > until) break
-    if (cursor > monthBounds(year, month).end) break
-    if (occurrenceOverlapsMonth(event, cursor, year, month)) addExpandedOccurrence(target, event, cursor, exceptions)
-    if (freq === "DAILY") cursor.setDate(cursor.getDate() + interval)
-    else if (freq === "WEEKLY") cursor.setDate(cursor.getDate() + 7 * interval)
-    else if (freq === "MONTHLY") cursor.setMonth(cursor.getMonth() + interval)
-    else cursor.setFullYear(cursor.getFullYear() + interval)
-  }
-}
-
-function eventsForMonth(events, year, month) {
-  var result = ({})
-  var groups = ({})
-  for (var i = 0; i < events.length; i++) {
-    var event = events[i]
-    var groupKey = event.uid || "event-" + i
-    if (!groups[groupKey]) groups[groupKey] = { master: null, exceptions: [] }
-    if (event.recurrenceId) groups[groupKey].exceptions.push(event)
-    else if (!groups[groupKey].master) groups[groupKey].master = event
-  }
-  for (var groupKey in groups) {
-    var group = groups[groupKey]
-    var exceptions = ({})
-    for (var e = 0; e < group.exceptions.length; e++) {
-      var exception = group.exceptions[e]
-      exceptions[exception.recurrenceId.getTime()] = true
-    }
-    if (group.master) expandEvent(result, group.master, year, month, exceptions)
-    for (var x = 0; x < group.exceptions.length; x++) {
-      var replacement = group.exceptions[x]
-      if (!replacement.cancelled && replacement.start && occurrenceOverlapsMonth(replacement, replacement.start.date, year, month)) {
-        addOccurrence(result, replacement, replacement.start.date)
-      }
-    }
-  }
-  for (var key in result) {
-    result[key].sort(function(a, b) { return a.start - b.start || a.summary.localeCompare(b.summary) })
-  }
-  return result
 }
 
 function formatTime(date, locale) {
@@ -354,6 +130,6 @@ function formatTime(date, locale) {
 }
 
 function formatEvent(event, locale, timeLocale) {
-  var time = event.allDay ? "" : formatTime(event.start, timeLocale || locale)
+  var time = event.allDay ? "" : formatTime(new Date(event.start), timeLocale || locale)
   return { time: time, title: event.summary, location: event.location, calendar: event.calendar, color: event.color }
 }

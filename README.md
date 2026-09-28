@@ -18,6 +18,13 @@ opens an event calendar from public iCalendar (ICS) feeds.
 
 ## Installation
 
+Requires Quickshell/Omarchy, `curl`, Python 3.11 or newer, and `uv` on PATH.
+On Omarchy, install missing runtime dependencies with `omarchy pkg add uv python curl`.
+The calendar service uses `uv` to install the exact Python dependencies in
+`backend.py.lock` into its own cache on first launch. That first launch needs
+internet access; subsequent launches can reuse the installed dependencies offline.
+No system Python packages are modified.
+
 Install the plugin with the Omarchy plugin manager:
 
 ```bash
@@ -59,7 +66,9 @@ omarchy-shell shell toggle intemporel
 
 ## Configuration
 
-Edit `calendars.jsonc` in the plugin directory to configure your calendars:
+If `~/.config/intemporel/calendars.jsonc` exists, it takes precedence. Otherwise,
+copy `calendars.jsonc.example` to `calendars.jsonc` in the plugin directory and
+edit that file:
 
 ```text
 ~/.config/omarchy/plugins/intemporel/calendars.jsonc
@@ -71,7 +80,8 @@ Edit `calendars.jsonc` in the plugin directory to configure your calendars:
     {
       "name": "Work",
       "url": "https://example.com/work.ics",
-      "color": "#4285F4"
+      "color": "#4285F4",
+      "emails": ["you@example.com"]
     },
     {
       "name": "Family",
@@ -87,8 +97,28 @@ Each calendar entry supports:
 - `name`: label used internally for the calendar source
 - `url`: public, read-only ICS feed URL
 - `color`: optional color for the event marker
-- `excludeDeclined`: optional; defaults to `true`, hiding invitations you
-  declined. Set it to `false` to show them.
+- `emails`: optional list of your attendee email addresses for this feed.
+  A single `email` string is also accepted. Matching ignores case and `mailto:`.
+- `excludeDeclined`: defaults to `true`; hides occurrences declined by one of
+  your configured `emails`. Other attendees' declines do not hide your meetings.
+  Without an email identity, invitations remain visible. Set it to `false` to
+  show your declined invitations too.
+
+Each URL must be unique and use HTTP, HTTPS or a local `file://` URL
+(`webcal:` is converted to HTTPS). Local feeds retain the same size and validation limits.
+Different feeds retain their own events even when their event UIDs match.
+
+### Calendar support
+
+The background service uses `icalendar` and `recurring-ical-events` for timezone
+and recurrence handling, including named/embedded timezones, daylight saving
+transitions, `BYDAY`/`BYMONTHDAY`/`BYSETPOS`, `RDATE`, `EXDATE`, moved occurrences,
+and cancellations. Floating times use the computer's local timezone; date-only
+events remain all-day events. Event alarms cannot overwrite event fields.
+
+Only the visible six-week grid is expanded. Parsed feeds and recent windows are
+cached in one service shared by all monitors, and selecting another day in the
+same window does not expand recurrences again. Long day lists can be scrolled.
 
 ### Feed cache
 
@@ -96,6 +126,15 @@ Intemporel keeps the last successful response for each feed in
 `~/.cache/intemporel-calendar-cache.json`. Cached events appear immediately
 when the calendar opens; feeds then refresh in the background. The cache is
 local and may contain the same private calendar data as the configured ICS URLs.
+It is written atomically with owner-only permissions. The previous cache format
+is read automatically. Invalid/non-calendar responses and failed downloads keep
+the last valid feed. Editing configuration during a download invalidates its
+response, so old data cannot be attributed to a new calendar.
+
+Downloads have a 15-second timeout and a 16 MiB per-feed limit. Calendar
+processing is limited to five seconds per feed/query and 10,000 occurrences per
+window; an oversized or pathological feed reports a refresh failure instead of
+blocking the shell.
 
 ### Privacy and security
 
@@ -169,7 +208,7 @@ The command disables and unloads the plugin, including its in-plugin calendar
 configuration. It preserves the feed cache. To discard cached events too, run:
 
 ```bash
-rm -f "~/.cache/intemporel-calendar-cache.json"
+rm -f "$HOME/.cache/intemporel-calendar-cache.json"
 ```
 
 ## Development
@@ -179,17 +218,30 @@ The plugin consists of:
 - `BarWidget.qml`: clock label and calendar host, following the Omarchy clock structure
 - `Model.js`: clock label formatting helpers
 - `Calendar.qml`: calendar UI, keyboard handling, and shell integration
-- `CalendarModel.js`: ICS parsing, recurrence expansion, and formatting
-- `calendars.jsonc`: starter calendar configuration
+- `CalendarModel.js`: small configuration and display helpers
+- `service/CalendarStore.qml`: shared config watcher, request generations, and worker IPC
+- `backend.py`: background downloads, validated ICS parsing, recurrence expansion, and cache
+- `backend.py.lock`: reproducible Python dependency versions
+- `tests/`: recurrence, filtering, cache/race, and real Quickshell IPC regression tests
+- `calendars.jsonc.example`: starter calendar configuration
 - `manifest.json`: Omarchy plugin metadata and entry point
 
 Validate the plugin before submitting changes:
 
 ```bash
 omarchy plugin validate .
-qmllint -I /usr/share/omarchy/shell Calendar.qml
-node --check CalendarModel.js
+qmllint -I /usr/share/omarchy/shell Calendar.qml service/CalendarStore.qml
+node tests/model.test.cjs
+PYTHONDONTWRITEBYTECODE=1 uv run --locked --script backend.py --test
 ```
+
+Run tests from a development checkout outside the installed plugins directory,
+so temporary test entry points do not trigger shell hot reloads. The integration
+test uses a temporary home/cache and a local HTTP fixture; it does not access
+your calendars. It is skipped if Quickshell or uv is unavailable.
+
+To update dependencies deliberately, run `uv lock --script backend.py --upgrade`
+and rerun the regression tests before committing the lockfile.
 
 Pull requests and issue reports are welcome.
 

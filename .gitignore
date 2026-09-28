@@ -1,1 +1,4 @@
 calendars.jsonc
+__pycache__/
+*.pyc
+test-service-*.qml

@@ -3,7 +3,8 @@
     // {
     //   "name": "Work",
     //   "url": "https://example.com/work.ics",
-    //   "color": "#4285F4"
+    //   "color": "#4285F4",
+    //   "emails": ["you@example.com"]
     // },
     // {
     //   "name": "Family",
